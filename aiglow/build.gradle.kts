@@ -24,6 +24,16 @@ android {
     buildFeatures {
         compose = true
     }
+
+    // Exposes the "release" variant as a SoftwareComponent so maven-publish
+    // can reference components["release"] below.
+    // (한국어) maven-publish가 components["release"]를 참조할 수 있도록
+    // release 빌드 변형을 SoftwareComponent로 노출한다.
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 dependencies {

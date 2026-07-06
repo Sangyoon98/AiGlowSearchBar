@@ -61,11 +61,11 @@ repositories {
 
 // 사용하는 모듈의 build.gradle.kts
 dependencies {
-    implementation 'com.github.YOUR_USERNAME:aiglow:v1.0.0'
+    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.0.0'
 }
 ```
 
-`YOUR_USERNAME`을 GitHub 사용자명, `v1.0.0`을 원하는 릴리스 태그로 바꾸세요.
+> 좌표 형식 참고: 이 저장소는 Gradle 모듈이 여러 개(`:app`, `:aiglow`)이므로, JitPack은 단일 모듈용 `com.github.<user>:<repo>:<tag>` 대신 `com.github.<user>.<repo>:<module>:<tag>` 형식(user/repo를 점으로 연결)을 요구합니다. `v1.0.0`은 원하는 릴리스 태그로 바꾸세요.
 
 > **배포 절차:** [PUBLISHING.md](PUBLISHING.md) 참조.
 

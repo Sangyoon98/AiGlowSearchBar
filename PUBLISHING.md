@@ -11,31 +11,43 @@ version = "1.0.1" // <- change this
 
 Also update `README.md` + `README.ko.md` if referring to a specific version.
 
-### 2. Create a git tag and push
+### 2. Sanity-check the release build locally
+```bash
+./gradlew :aiglow:assembleRelease :aiglow:testDebugUnitTest
+```
+
+### 3. Create a git tag and push
 ```bash
 git tag v1.0.1
 git push origin main
 git push origin v1.0.1
 ```
 
-### 3. (Optional) GitHub: create a Release
+### 4. (Optional) GitHub: create a Release
 
-Go to https://github.com/YOUR_USERNAME/aiglow/releases/new, select the tag, describe the changes, and publish. This makes the release discoverable.
+Go to https://github.com/Sangyoon98/AiGlowSearchBar/releases/new, select the tag, describe the changes, and publish. This makes the release discoverable.
 
-### 4. JitPack will build automatically
+### 5. Trigger the JitPack build
 
-JitPack monitors your GitHub tags and builds them on-demand. Consumers add:
+JitPack builds tags lazily, on first request. Trigger it by opening:
+
+```
+https://jitpack.io/#Sangyoon98/AiGlowSearchBar/v1.0.1
+```
+
+Wait for the green "Get it" status (first build takes 1–5 minutes), then consumers can add:
 
 ```gradle
 repositories {
     maven { url 'https://jitpack.io' }
 }
 dependencies {
-    implementation 'com.github.YOUR_USERNAME:aiglow:v1.0.1'
+    // Multi-module coordinate: com.github.<user>.<repo>:<module>:<tag>
+    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.0.1'
 }
 ```
 
-**First-time build takes 1–2 minutes on JitPack.** After that, it's cached.
+**Why the dotted `user.repo` groupId:** this repo has multiple Gradle modules (`:app`, `:aiglow`). JitPack's single-module shorthand `com.github.user:repo:tag` only works for single-module repos; multi-module repos must address the specific module with `com.github.user.repo:module:tag`. Double-check the exact coordinate on the JitPack page above — it lists every resolvable module for the build.
 
 ## Alternative: Maven Central (Sonatype OSSRH)
 
