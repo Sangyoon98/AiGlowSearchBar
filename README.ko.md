@@ -37,7 +37,9 @@ _플레이그라운드 앱 스크린샷이 여기에 추가될 예정입니다._
 
 ## 설치
 
-라이브러리는 `:aiglow` Gradle 모듈에 있습니다.
+### 소스에서 (개발용)
+
+라이브러리는 `:aiglow` Gradle 모듈에 있습니다. 이 저장소를 클론한 뒤:
 
 ```kotlin
 // settings.gradle.kts
@@ -49,7 +51,23 @@ dependencies {
 }
 ```
 
-> Maven Central / JitPack 좌표는 배포 후 제공될 예정입니다.
+### JitPack에서 (배포된 릴리스)
+
+```kotlin
+// settings.gradle.kts 또는 루트 build.gradle.kts
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
+// 사용하는 모듈의 build.gradle.kts
+dependencies {
+    implementation 'com.github.YOUR_USERNAME:aiglow:v1.0.0'
+}
+```
+
+`YOUR_USERNAME`을 GitHub 사용자명, `v1.0.0`을 원하는 릴리스 태그로 바꾸세요.
+
+> **배포 절차:** [PUBLISHING.md](PUBLISHING.md) 참조.
 
 **요구 사항:** minSdk 26, Kotlin 2.2+, Jetpack Compose (BOM 2026.02+), Material 3.
 

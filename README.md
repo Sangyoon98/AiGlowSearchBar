@@ -37,7 +37,9 @@ _Screenshots from the playground app will be added here._
 
 ## Installation
 
-The library lives in the `:aiglow` Gradle module.
+### From source (for development)
+
+The library lives in the `:aiglow` Gradle module. Clone this repo and add:
 
 ```kotlin
 // settings.gradle.kts
@@ -49,7 +51,23 @@ dependencies {
 }
 ```
 
-> Maven Central / JitPack coordinates will be provided once the library is published.
+### From JitPack (published releases)
+
+```kotlin
+// settings.gradle.kts or root build.gradle.kts
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
+// your module's build.gradle.kts
+dependencies {
+    implementation 'com.github.YOUR_USERNAME:aiglow:v1.0.0'
+}
+```
+
+Replace `YOUR_USERNAME` with the GitHub username and `v1.0.0` with the desired release tag.
+
+> **Release flow:** see [PUBLISHING.md](PUBLISHING.md).
 
 **Requirements:** minSdk 26, Kotlin 2.2+, Jetpack Compose (BOM 2026.02+), Material 3.
 

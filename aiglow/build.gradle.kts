@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.compose)
+    id("maven-publish")
 }
 
 android {
@@ -42,4 +43,19 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+// Publishing configuration for JitPack, Maven Central and other repositories.
+// (한국어) JitPack, Maven Central 등의 저장소에 배포하기 위한 설정.
+afterEvaluate {
+    publishing {
+        publications {
+            register<MavenPublication>("release") {
+                from(components["release"])
+                groupId = "com.sangyoon"
+                artifactId = "aiglow"
+                version = "1.0.0" // Replace with actual version
+            }
+        }
+    }
 }
