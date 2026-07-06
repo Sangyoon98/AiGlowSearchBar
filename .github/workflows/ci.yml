@@ -1,0 +1,48 @@
+name: CI
+
+# Gate for branch protection on main: every PR must build, pass unit tests,
+# and pass lint before it can be merged.
+# (한국어) main 브랜치 보호의 필수 상태 체크: PR은 빌드/유닛테스트/린트를
+# 모두 통과해야 병합할 수 있다.
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build, test & lint (:aiglow)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble :aiglow release AAR
+        run: ./gradlew :aiglow:assembleRelease --console=plain
+
+      - name: Run :aiglow unit tests
+        run: ./gradlew :aiglow:testDebugUnitTest --console=plain
+
+      - name: Lint :aiglow
+        run: ./gradlew :aiglow:lintDebug --console=plain
+
+      - name: Upload lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: aiglow/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
