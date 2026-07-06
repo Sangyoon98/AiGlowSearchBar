@@ -1,6 +1,8 @@
 package com.sangyoon.aiglow
 
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.Easing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
@@ -8,56 +10,102 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * aiGlow의 기본 그라디언트 팔레트.
+ * Immutable set of visual parameters for a single glow state.
  *
- * 왜 top-level private val인가: companion object에 두면 "전역 상태" 관례가 생기기 쉽고,
- * 이 라이브러리는 companion object 내 상태(특히 mutable)를 금지하는 규칙을 따르므로
- * 파일 스코프의 불변 값으로 격리한다. sweep gradient의 이음새(seam)가 보이지 않도록
- * 시작 색으로 자연스럽게 되돌아오는 순환 팔레트로 구성했다.
- */
-private val DefaultGlowColors: List<Color> = listOf(
-    Color(0xFF4285F4), // blue
-    Color(0xFF9B72CB), // purple
-    Color(0xFFD96570), // rose
-    Color(0xFF9B72CB), // purple (blue로 되돌아가는 중간 단계)
-)
-
-/**
- * [aiGlow] 효과의 모든 시각 파라미터를 담는 불변 설정 객체.
+ * Why an `@Immutable` data class: the Compose compiler cannot infer stability for
+ * `List` or interface types like [Shape]. `@Immutable` is a developer contract that
+ * "no public property ever changes after construction", which lets every composable
+ * and modifier reading this config skip recomposition as long as an equal value is
+ * passed (see the official Compose Stability guide:
+ * developer.android.com/develop/ui/compose/performance/stability).
  *
- * 왜 `@Immutable` data class인가: Compose 컴파일러는 `List`나 `Shape`(인터페이스) 같은
- * 타입을 스스로 안정(stable)하다고 추론하지 못한다. `@Immutable`은 "이 객체의 모든 공개
- * 프로퍼티는 생성 후 절대 변하지 않는다"는 개발자 계약을 컴파일러에 알려, 같은 값이
- * 전달되는 한 이 config를 읽는 컴포저블/Modifier가 recomposition을 건너뛸 수 있게 한다
- * (Android 공식 Stability 가이드: developer.android.com/develop/ui/compose/performance/stability).
+ * Why `copy()` instead of a Builder: a Builder exposing `var` fields would break the
+ * immutability contract above. `copy()` produces a new structurally-equal instance,
+ * so changing one parameter preserves skip-optimization for all the others.
  *
- * 왜 Builder가 아니라 data class + copy()인가: var 필드를 노출하는 Builder는 위의 불변
- * 계약을 깨뜨려 stability 추론을 무너뜨린다. `copy()`는 구조적 동등성(equals)이 유지되는
- * 새 불변 인스턴스를 만들므로, 일부 값만 바꿔도 나머지 파라미터의 skip 최적화가 보존된다.
+ * (한국어) 글로우 한 가지 상태의 시각 파라미터를 담는 불변 설정 객체입니다.
+ * Compose 컴파일러는 List/Shape의 안정성을 추론하지 못하므로 `@Immutable` 계약으로
+ * "생성 후 불변"을 보장해 recomposition skip 최적화를 가능하게 합니다.
+ * var Builder 대신 copy() 기반 커스터마이징을 사용해 이 계약을 유지합니다.
  *
- * @property colors sweep gradient에 사용할 색 목록. 계약상 불변 리스트로 취급해야 하며
- *   (외부에서 변형 가능한 리스트를 넘긴 뒤 수정하면 `@Immutable` 계약 위반),
- *   첫 색과 끝 색이 다르면 이음새 제거를 위해 그리기 시점에 첫 색이 자동으로 덧붙는다.
- * @property strokeWidth 글로우 링(테두리)의 두께. 픽셀이 아닌 [Dp]로 받아 밀도 독립성을 유지한다.
- * @property blurRadius 글로우가 바깥으로 번지는 반경. 0.dp면 번짐 없이 선명한 링만 그린다.
- *   `Modifier.blur()` 기반이므로 API 31 미만 기기에서는 번짐이 생략되고 링만 표시된다.
- * @property rotationDuration 그라디언트가 한 바퀴(360°) 도는 데 걸리는 시간(ms).
- * @property shape 글로우와 텍스트필드가 공유하는 외곽선. 커스텀 enum이 아닌 Compose 표준
- *   [Shape] 인터페이스를 그대로 받아, [CircleShape]·RoundedCornerShape는 물론 사용자가
- *   정의한 어떤 Shape와도 조합될 수 있게 한다(개방-폐쇄 원칙).
+ * @property colors Colors of the rotating sweep gradient ring. Treat the list as
+ *   immutable (mutating it after construction violates the `@Immutable` contract).
+ *   If the first and last colors differ, the first color is appended at draw time to
+ *   hide the sweep seam.
+ *   (한국어) 회전 그라디언트 링의 색 목록. 불변으로 취급해야 하며, 첫/끝 색이 다르면
+ *   그리기 시점에 첫 색이 덧붙어 이음새를 없앱니다.
+ * @property strokeWidth Thickness of the crisp gradient ring, in [Dp] for density
+ *   independence. (한국어) 선명한 링의 두께(Dp).
+ * @property blurRadius How far the soft halo bleeds outward. `0.dp` disables the halo.
+ *   Rendered with [android.graphics.BlurMaskFilter] on API 28+ (hardware-accelerated
+ *   since the Skia HWUI pipeline); below API 28 a layered-stroke approximation is used,
+ *   so the halo works on every supported API level and never blurs your content.
+ *   (한국어) halo가 바깥으로 번지는 반경. API 28+는 BlurMaskFilter, 미만은 다층 스트로크
+ *   근사로 그려 모든 지원 API에서 동작하며 콘텐츠는 절대 흐려지지 않습니다.
+ * @property rotationDuration Time in milliseconds for one full 360° rotation of the
+ *   gradient. (한국어) 그라디언트가 한 바퀴 도는 시간(ms).
+ * @property shape Outline shared by the glow and the host component. This is the
+ *   standard Compose [Shape] interface — pass `RoundedCornerShape(radius)` for any
+ *   corner radius from a sharp rectangle (0.dp) to a capsule, or any custom [Shape].
+ *   (한국어) 글로우와 컴포넌트가 공유하는 외곽선. 표준 Shape 인터페이스라
+ *   RoundedCornerShape(radius)로 사각형~캡슐을 자유롭게 지정할 수 있습니다.
+ * @property haloColors Optional separate palette for the blurred halo ("shadow color").
+ *   `null` falls back to [colors]. (한국어) halo(셰도우) 전용 색. null이면 colors 사용.
+ * @property haloStrokeWidth Optional thickness of the blurred halo ring. `null` falls
+ *   back to `strokeWidth * 2`, which reads as a natural light spread.
+ *   (한국어) halo 링 두께. null이면 strokeWidth * 2.
+ * @property alpha Overall glow opacity in 0..1. Components animate this value between
+ *   interaction states, so alpha changes never rebuild the draw cache.
+ *   (한국어) 글로우 전체 불투명도(0..1). 상태 전환 시 이 값만 애니메이션되므로
+ *   draw 캐시가 재생성되지 않습니다.
+ * @property animated `false` freezes the gradient at angle 0° (used e.g. for disabled
+ *   states, and useful for screenshot tests). (한국어) false면 회전을 멈춥니다.
+ * @property easing Easing of the rotation. [LinearEasing] gives a constant, seamless
+ *   spin; a non-linear easing produces a pulsing rotation.
+ *   (한국어) 회전 easing. 기본 LinearEasing은 일정한 속도로 돕니다.
  */
 @Immutable
 data class GlowConfig(
-    val colors: List<Color> = DefaultGlowColors,
+    val colors: List<Color> = AiGlowDefaults.GeminiColors,
     val strokeWidth: Dp = 2.dp,
     val blurRadius: Dp = 16.dp,
     val rotationDuration: Int = 4_000,
-    val shape: Shape = CircleShape,
+    val shape: Shape = RoundedCornerShape(28.dp),
+    val haloColors: List<Color>? = null,
+    val haloStrokeWidth: Dp? = null,
+    val alpha: Float = 1f,
+    val animated: Boolean = true,
+    val easing: Easing = LinearEasing,
 ) {
     init {
-        require(colors.isNotEmpty()) { "GlowConfig.colors에는 최소 1개 이상의 색이 필요합니다." }
-        require(rotationDuration > 0) { "rotationDuration은 0보다 큰 밀리초 값이어야 합니다." }
-        require(strokeWidth >= 0.dp) { "strokeWidth는 음수가 될 수 없습니다." }
-        require(blurRadius >= 0.dp) { "blurRadius는 음수가 될 수 없습니다." }
+        require(colors.isNotEmpty()) {
+            "GlowConfig.colors must contain at least one color. (colors에는 최소 1개의 색이 필요합니다)"
+        }
+        require(rotationDuration > 0) {
+            "rotationDuration must be a positive number of milliseconds. (0보다 큰 ms 값이어야 합니다)"
+        }
+        require(strokeWidth >= 0.dp) { "strokeWidth must not be negative. (음수 불가)" }
+        require(blurRadius >= 0.dp) { "blurRadius must not be negative. (음수 불가)" }
+        require(haloColors == null || haloColors.isNotEmpty()) {
+            "haloColors must be null or non-empty. (null이거나 비어있지 않아야 합니다)"
+        }
+        require(haloStrokeWidth == null || haloStrokeWidth >= 0.dp) {
+            "haloStrokeWidth must not be negative. (음수 불가)"
+        }
+        require(alpha in 0f..1f) { "alpha must be within 0..1. (0..1 범위여야 합니다)" }
     }
 }
+
+/**
+ * Halo palette resolution: dedicated halo colors win, otherwise reuse the ring colors.
+ * (한국어) halo 색 결정: 전용 색이 있으면 사용, 없으면 링 색을 재사용.
+ */
+internal val GlowConfig.resolvedHaloColors: List<Color>
+    get() = haloColors ?: colors
+
+/**
+ * Halo width resolution: `strokeWidth * 2` reads as a natural light spread by default.
+ * (한국어) halo 두께 결정: 기본값은 strokeWidth * 2로 자연스러운 확산을 만든다.
+ */
+internal val GlowConfig.resolvedHaloStrokeWidth: Dp
+    get() = haloStrokeWidth ?: (strokeWidth * 2)

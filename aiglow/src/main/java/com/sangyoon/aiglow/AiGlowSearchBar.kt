@@ -1,94 +1,91 @@
 package com.sangyoon.aiglow
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
 
 /**
- * 회전하는 AI 글로우 테두리를 두른 검색 바.
+ * A Material text-field-based search bar wrapped in a rotating AI glow.
  *
- * 레이어 설계(아래→위): [블러 halo] → [OutlinedTextField] → [선명한 그라디언트 링].
- * 왜 이렇게 쌓는가: `Modifier.blur()`는 노드가 그리는 콘텐츠 전체에 RenderEffect를 걸기
- * 때문에 텍스트필드에 직접 적용하면 글자까지 흐려진다. 그래서 번짐은 글로우만 그리는
- * 빈 레이어에 격리해 적용하고(공식 Graphics Modifiers 문서의 blur 동작 방식), 선명한
- * 링은 컨테이너 배경 위에 얹어 두 레이어가 합쳐진 "빛나는 테두리"를 만든다.
- * 두 레이어는 [rememberGlowAngle] 하나가 만든 **단일 회전 상태를 공유**하므로 어긋날 수 없다.
+ * Why it is built on Material's [OutlinedTextField]: the glow needs a shaped,
+ * opaque container with transparent stock borders — exactly what
+ * [AiGlowDefaults.searchBarColors] configures — while inheriting all Material
+ * behaviors (cursor, selection, IME, a11y) for free instead of re-implementing them.
  *
- * 왜 상태 호이스팅 시그니처(query/onQueryChange)인가: 컴포넌트가 검색어를 소유하지 않아야
- * 호출자가 ViewModel 등 어디에든 상태를 둘 수 있고, 이 함수 자체는 stateless로 남아
- * 재사용과 테스트가 쉬워진다(공식 State hoisting 가이드).
+ * Why state hoisting (query/onQueryChange): the component never owns the query, so
+ * callers keep it in a ViewModel or anywhere else, and this function stays stateless
+ * and trivially testable (official state-hoisting guidance).
  *
- * API 31 미만 기기에서는 `Modifier.blur()`가 무시되므로(공식 문서 명시) halo 레이어가
- * 선명한 링으로 대체 렌더링되지만, 그라디언트 테두리라는 핵심 시각은 그대로 유지된다.
+ * The glow reacts to focus/press through the shared [interactionSource]:
+ * `glowStyle.focused` lights up while typing. `glowStyle.idle.shape` is applied to
+ * the text field too, so the glow and the container outline always match.
  *
- * @param query 현재 검색어. 호출자가 소유한다.
- * @param onQueryChange 검색어 변경 콜백.
- * @param modifier 배치용 Modifier. 관례에 따라 첫 optional 파라미터로 둔다.
- * @param glowConfig 글로우 커스터마이징. `glowConfig.shape`가 텍스트필드의 shape에도
- *   그대로 적용되어 글로우와 컨테이너 외곽선이 항상 일치한다.
+ * (한국어) Material OutlinedTextField 기반의 글로우 검색 바입니다. 커서/IME/접근성 등
+ * Material 동작을 그대로 상속하고, 상태 호이스팅으로 stateless를 유지합니다.
+ * 같은 InteractionSource를 공유해 포커스/눌림에 글로우가 반응하며,
+ * glowStyle.idle.shape가 텍스트필드 shape에도 적용되어 외곽선이 항상 일치합니다.
+ *
+ * @param query Current query text, owned by the caller. (한국어) 호출자가 소유하는 검색어.
+ * @param onQueryChange Called on every text change. (한국어) 검색어 변경 콜백.
+ * @param modifier Layout modifier. (한국어) 배치용 Modifier.
+ * @param enabled `false` disables input and dims the glow (via [AiGlowStyle.disabled]).
+ *   (한국어) false면 입력이 막히고 글로우도 비활성 상태로 전환됩니다.
+ * @param readOnly Text cannot be modified but can be selected/copied.
+ *   (한국어) 수정 불가, 선택/복사는 가능.
+ * @param placeholder Shown while [query] is empty. (한국어) 검색어가 없을 때 표시.
+ * @param leadingIcon Slot at the start — any composable (icon, avatar, ...).
+ *   (한국어) 좌측 슬롯 — 아이콘 등 임의 컴포저블.
+ * @param trailingIcon Slot at the end — e.g. a clear button. (한국어) 우측 슬롯.
+ * @param onSearch Invoked when the IME search action fires. (한국어) IME 검색 액션 콜백.
+ * @param keyboardOptions Defaults to an IME Search action. (한국어) 기본 IME 액션은 Search.
+ * @param textStyle Style of the input text. (한국어) 입력 텍스트 스타일.
+ * @param glowStyle Per-interaction-state glow. (한국어) 상태별 글로우 스타일.
+ * @param colors Material text field colors; the default hides stock borders so the
+ *   gradient ring is the only border. (한국어) 기본값은 기본 테두리를 숨겨 링이 테두리가 됩니다.
+ * @param interactionSource Pass your own to observe/share interactions; `null` creates
+ *   an internal one. (한국어) 직접 관찰하려면 전달, null이면 내부 생성.
  */
 @Composable
 fun AiGlowSearchBar(
     query: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    glowConfig: GlowConfig = GlowConfig(),
+    enabled: Boolean = true,
+    readOnly: Boolean = false,
+    placeholder: @Composable (() -> Unit)? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    onSearch: ((String) -> Unit)? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+    textStyle: TextStyle = LocalTextStyle.current,
+    glowStyle: AiGlowStyle = AiGlowDefaults.interactiveStyle(),
+    colors: TextFieldColors = AiGlowDefaults.searchBarColors(),
+    interactionSource: MutableInteractionSource? = null,
 ) {
-    // 단일 회전 상태를 두 글로우 레이어가 공유한다 — 인스턴스별로는 독립, 레이어끼리는 동기화.
-    val angle = rememberGlowAngle(glowConfig.rotationDuration)
-
-    // halo는 같은 config의 copy()로 두께만 키운다: 불변 data class 커스터마이징 관례의 실례.
-    val haloConfig = remember(glowConfig) {
-        glowConfig.copy(strokeWidth = glowConfig.strokeWidth * 2)
-    }
-    // Modifier 인스턴스를 remember로 고정해 검색어 입력(recomposition)마다
-    // drawWithCache 캐시가 버려지는 것을 막는다.
-    val haloRing = remember(haloConfig, angle) {
-        Modifier.glowRing(haloConfig) { angle.value }
-    }
-    val crispRing = remember(glowConfig, angle) {
-        Modifier.glowRing(glowConfig) { angle.value }
-    }
-
-    Box(modifier = modifier) {
-        if (glowConfig.blurRadius > 0.dp) {
-            Box(
-                Modifier
-                    .matchParentSize()
-                    // Unbounded: 글로우가 검색 바 경계 밖으로 자연스럽게 번지도록 클리핑을 끈다.
-                    .blur(glowConfig.blurRadius, BlurredEdgeTreatment.Unbounded)
-                    .then(haloRing),
-            )
-        }
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = glowConfig.shape,
-            colors = OutlinedTextFieldDefaults.colors(
-                // 기본 테두리는 끈다: 테두리 역할은 위에 얹는 그라디언트 링이 대신한다.
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                // 컨테이너를 불투명하게 채워 halo의 안쪽 절반을 가리면 "바깥으로만 빛나는" 효과가 된다.
-                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-            ),
-        )
-        // draw 전용 레이어라 semantics/pointer 입력이 없으므로 텍스트필드 터치를 가로채지 않는다.
-        Box(
-            Modifier
-                .matchParentSize()
-                .then(crispRing),
-        )
-    }
+    val source = interactionSource ?: remember { MutableInteractionSource() }
+    OutlinedTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        modifier = modifier.aiGlow(glowStyle, source, enabled),
+        enabled = enabled,
+        readOnly = readOnly,
+        textStyle = textStyle,
+        placeholder = placeholder,
+        leadingIcon = leadingIcon,
+        trailingIcon = trailingIcon,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = KeyboardActions(onSearch = { onSearch?.invoke(query) }),
+        singleLine = true,
+        interactionSource = source,
+        shape = glowStyle.idle.shape,
+        colors = colors,
+    )
 }
