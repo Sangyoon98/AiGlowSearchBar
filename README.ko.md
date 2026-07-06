@@ -2,6 +2,10 @@
 
 [English](README.md) | **한국어**
 
+<p align="center">
+  <img src="docs/images/hero.svg" alt="AiGlow — Jetpack Compose용 회전 AI 그라디언트 글로우" width="840"/>
+</p>
+
 UI를 회전하는 AI 스타일 그라디언트 글로우로 감싸는 순수 Jetpack Compose 라이브러리입니다. 콘텐츠 뒤에는 부드럽게 번지는 halo를, 가장자리에는 선명한 sweep-gradient 링을 그립니다.
 
 - **전역 상태 제로** — 모든 글로우 컴포넌트는 구조적으로 독립 애니메이션됩니다.
@@ -17,6 +21,19 @@ UI를 회전하는 AI 스타일 그라디언트 글로우로 감싸는 순수 Je
 | `AiGlowFloatingActionButton` | 누르는 동안 밝아지는 글로우를 두른 Material 3 FAB. |
 | `AiGlowBox` | *어떤* 콘텐츠든 글로우로 감싸는 범용 컨테이너. 클릭(ripple 포함)도 선택적으로 지원합니다. |
 | `Modifier.aiGlow(...)` | 위 컴포넌트들이 공유하는 원본 Modifier — 원하는 컴포저블에 직접 글로우를 붙일 수 있습니다. |
+
+## 미리보기
+
+_플레이그라운드 앱 스크린샷이 여기에 추가될 예정입니다._
+
+<!-- :app 플레이그라운드에서 캡처해 docs/images/에 넣은 뒤 주석을 해제하세요:
+
+| Search Bar | FAB | Box |
+|:---:|:---:|:---:|
+| ![Search bar](docs/images/preview-searchbar.png) | ![FAB](docs/images/preview-fab.png) | ![Box](docs/images/preview-box.png) |
+
+<p align="center"><img src="docs/images/playground.png" alt="플레이그라운드" width="360"/></p>
+-->
 
 ## 설치
 
@@ -150,6 +167,10 @@ AiGlowSearchBar(query, onQueryChange, glowStyle = custom)
 - 현재 설정을 복사 가능한 Kotlin 코드로 보여주는 **Generated code** 블록
 
 Android Studio에서 실행하세요.
+
+## 기여하기
+
+기여를 환영합니다. 프로젝트 맥락과 아키텍처 규칙은 — 사람과 AI 코딩 에이전트(Claude Code, Codex 등) 모두를 위해 — [AGENTS.md](AGENTS.md)에 정리되어 있습니다. 수정 전에 먼저 읽어주세요.
 
 ## 라이선스
 

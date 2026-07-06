@@ -2,6 +2,10 @@
 
 **English** | [한국어](README.ko.md)
 
+<p align="center">
+  <img src="docs/images/hero.svg" alt="AiGlow — rotating AI-style gradient glow for Jetpack Compose" width="840"/>
+</p>
+
 A pure Jetpack Compose library that wraps your UI in a rotating, AI-style gradient glow — a soft blurred halo behind the content plus a crisp sweep-gradient ring around its edge.
 
 - **Zero global state** — every glowing component animates independently by construction.
@@ -17,6 +21,19 @@ A pure Jetpack Compose library that wraps your UI in a rotating, AI-style gradie
 | `AiGlowFloatingActionButton` | A Material 3 FAB wrapped in glow that brightens while pressed. |
 | `AiGlowBox` | A general-purpose container that puts a glow around *any* content, optionally clickable (ripple included). |
 | `Modifier.aiGlow(...)` | The raw modifier behind all of the above — attach a glow to any composable yourself. |
+
+## Preview
+
+_Screenshots from the playground app will be added here._
+
+<!-- Capture from the :app playground, drop the files into docs/images/, then uncomment:
+
+| Search Bar | FAB | Box |
+|:---:|:---:|:---:|
+| ![Search bar](docs/images/preview-searchbar.png) | ![FAB](docs/images/preview-fab.png) | ![Box](docs/images/preview-box.png) |
+
+<p align="center"><img src="docs/images/playground.png" alt="Playground" width="360"/></p>
+-->
 
 ## Installation
 
@@ -150,6 +167,10 @@ The `:app` module ships a playground where every customization option can be twe
 - A **Generated code** block that renders your current selection as copy-pastable Kotlin
 
 Run it from Android Studio.
+
+## Contributing
+
+Contributions are welcome. Project context and architecture rules — for humans and AI coding agents (Claude Code, Codex, …) alike — live in [AGENTS.md](AGENTS.md). Start there before making changes.
 
 ## License
 
