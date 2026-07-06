@@ -1,0 +1,48 @@
+name: Release
+
+# Fires on every version tag (see PUBLISHING.md step 3: git tag vX.Y.Z && git push origin vX.Y.Z).
+# JitPack already builds from the tag alone; this workflow only adds the
+# GitHub Release page — notes, discoverability, and downloadable artifacts.
+# (한국어) 버전 태그가 push될 때마다 실행된다. JitPack은 태그만으로 이미 빌드되며,
+# 이 워크플로는 GitHub Release 페이지(노트, 가시성, 다운로드 아티팩트)만 추가한다.
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build :aiglow AAR + sources jar
+        run: ./gradlew :aiglow:assembleRelease :aiglow:sourceReleaseJar --console=plain
+
+      - name: Stage release artifacts
+        run: |
+          mkdir -p release-artifacts
+          cp aiglow/build/outputs/aar/aiglow-release.aar "release-artifacts/aiglow-${{ github.ref_name }}.aar"
+          cp aiglow/build/intermediates/source_jar/release/release-sources.jar "release-artifacts/aiglow-${{ github.ref_name }}-sources.jar"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            release-artifacts/*.aar \
+            release-artifacts/*-sources.jar \
+            --title "${{ github.ref_name }}" \
+            --generate-notes
