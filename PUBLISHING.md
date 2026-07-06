@@ -2,30 +2,43 @@
 
 ## How to release a new version
 
-### 1. Update version in code
+### 1. Bump the version (via PR)
+
+`main` is protected — no direct pushes. Branch, bump, PR, merge (see [CONTRIBUTING.md](CONTRIBUTING.md)):
+
+```bash
+git checkout -b chore/release-v1.0.1
+```
+
 Edit `aiglow/build.gradle.kts`, update the `version` field in the `publishing` block:
 
 ```kotlin
 version = "1.0.1" // <- change this
 ```
 
-Also update `README.md` + `README.ko.md` if referring to a specific version.
+Also update `README.md` + `README.ko.md` if referring to a specific version. Open a PR titled e.g. `chore(release): bump version to 1.0.1`, wait for CI, squash-merge it.
 
 ### 2. Sanity-check the release build locally
+
 ```bash
 ./gradlew :aiglow:assembleRelease :aiglow:testDebugUnitTest
 ```
 
-### 3. Create a git tag and push
+(Also runs automatically as part of CI on the PR above.)
+
+### 3. Tag the merged commit and push
+
+Tags are not covered by the `main` branch ruleset, so pushing a tag is a direct operation — no PR needed for this step:
+
 ```bash
+git checkout main && git pull
 git tag v1.0.1
-git push origin main
 git push origin v1.0.1
 ```
 
-### 4. (Optional) GitHub: create a Release
+### 4. GitHub Release — automatic
 
-Go to https://github.com/Sangyoon98/AiGlowSearchBar/releases/new, select the tag, describe the changes, and publish. This makes the release discoverable.
+Pushing a `v*` tag triggers [`.github/workflows/release.yml`](.github/workflows/release.yml), which builds the release AAR + sources jar, attaches them, and publishes a GitHub Release with auto-generated notes (from PRs merged since the last tag — this is why squash-merged PR titles should follow [Conventional Commits](CONTRIBUTING.md)). Nothing to do manually here.
 
 ### 5. Trigger the JitPack build
 
