@@ -188,7 +188,7 @@ Run it from Android Studio.
 
 ## Contributing
 
-Contributions are welcome. Project context and architecture rules — for humans and AI coding agents (Claude Code, Codex, …) alike — live in [AGENTS.md](AGENTS.md). Start there before making changes.
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the branch/PR workflow and commit convention. Project context and architecture rules — for humans and AI coding agents (Claude Code, Codex, …) alike — live in [AGENTS.md](AGENTS.md). Start there before making changes.
 
 ## License
 

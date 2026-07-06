@@ -188,7 +188,7 @@ Android Studio에서 실행하세요.
 
 ## 기여하기
 
-기여를 환영합니다. 프로젝트 맥락과 아키텍처 규칙은 — 사람과 AI 코딩 에이전트(Claude Code, Codex 등) 모두를 위해 — [AGENTS.md](AGENTS.md)에 정리되어 있습니다. 수정 전에 먼저 읽어주세요.
+기여를 환영합니다 — 브랜치/PR 워크플로와 커밋 컨벤션은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요. 프로젝트 맥락과 아키텍처 규칙은 — 사람과 AI 코딩 에이전트(Claude Code, Codex 등) 모두를 위해 — [AGENTS.md](AGENTS.md)에 정리되어 있습니다. 수정 전에 먼저 읽어주세요.
 
 ## 라이선스
 

@@ -30,8 +30,15 @@ Pure Jetpack Compose library (`:aiglow`) that draws a rotating "AI glow" — a b
 ## Conventions
 
 - KDoc on every public/internal declaration must explain **why** (design rationale), English first, then a `(한국어)` paragraph.
-- User docs are bilingual: any change to `README.md` must be mirrored in `README.ko.md`.
+- User docs are bilingual: any change to `README.md` must be mirrored in `README.ko.md` (same for `CONTRIBUTING.md`/`.ko.md`).
 - Code comments: English primary, Korean `(한국어)` alongside where helpful.
+
+## Git workflow — `main` is protected
+
+- **Never commit directly to `main`.** Branch as `type/short-description` (e.g. `feat/halo-easing`, `fix/blur-fallback-api26`) and open a PR. `main` has no direct-push access, even for the repo owner.
+- PRs are **squash-merged**; the PR title becomes the commit on `main` and must follow Conventional Commits: `type(scope): subject` (types: `feat|fix|docs|refactor|test|chore|build|ci|perf`). Commits within the branch can be freeform.
+- CI (`.github/workflows/ci.yml`: assemble + unit tests + lint on `:aiglow`) is a required status check — a PR cannot merge until it's green.
+- Full detail: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Build & verify loop
 
