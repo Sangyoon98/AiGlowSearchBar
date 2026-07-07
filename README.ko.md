@@ -202,4 +202,10 @@ Android Studio에서 실행하세요.
 
 ## 라이선스
 
-TBD.
+```
+MIT License
+
+Copyright (c) 2026 Sangyoon
+```
+
+전체 내용은 [LICENSE](LICENSE) 파일을 참고하세요.

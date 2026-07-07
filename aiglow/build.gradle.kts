@@ -65,6 +65,15 @@ afterEvaluate {
                 groupId = "com.sangyoon"
                 artifactId = "aiglow"
                 version = "1.0.0" // Replace with actual version
+
+                pom {
+                    licenses {
+                        license {
+                            name = "MIT License"
+                            url = "https://github.com/Sangyoon98/AiGlowSearchBar/blob/main/LICENSE"
+                        }
+                    }
+                }
             }
         }
     }
