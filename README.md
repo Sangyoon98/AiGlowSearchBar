@@ -1,6 +1,16 @@
 # AiGlow
 
-**English** | [한국어](README.ko.md)
+<p align="center">
+  <a href="https://jitpack.io/#Sangyoon98/AiGlowSearchBar"><img src="https://jitpack.io/v/Sangyoon98/AiGlowSearchBar.svg" alt="JitPack"/></a>
+  <img src="https://img.shields.io/badge/minSdk-26-brightgreen?logo=android&logoColor=white" alt="Android minSdk 26"/>
+  <img src="https://img.shields.io/badge/Kotlin-2.2+-purple?logo=kotlin&logoColor=white" alt="Kotlin 2.2+"/>
+  <img src="https://img.shields.io/badge/Compose_BOM-2026.02+-blue?logo=jetpackcompose&logoColor=white" alt="Compose BOM 2026.02+"/>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"/></a>
+</p>
+
+<p align="center">
+  <b>English</b> | <a href="README.ko.md">한국어</a>
+</p>
 
 <p align="center">
   <img src="docs/images/hero.svg" alt="AiGlow — rotating AI-style gradient glow for Jetpack Compose" width="840"/>
