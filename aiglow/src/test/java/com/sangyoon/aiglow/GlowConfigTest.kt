@@ -103,6 +103,20 @@ class GlowConfigTest {
     }
 
     @Test
+    fun `haloDirection defaults to Outward and copy changes only it`() {
+        val base = GlowConfig()
+        assertEquals(HaloDirection.Outward, base.haloDirection)
+
+        val inward = base.copy(haloDirection = HaloDirection.Inward)
+        assertEquals(HaloDirection.Inward, inward.haloDirection)
+        // Everything else survives untouched. (한국어) 나머지 필드는 그대로 유지된다.
+        assertEquals(base.colors, inward.colors)
+        assertEquals(base.strokeWidth, inward.strokeWidth)
+        assertEquals(base.blurRadius, inward.blurRadius)
+        assertEquals(base.shape, inward.shape)
+    }
+
+    @Test
     fun `alpha outside 0 to 1 is rejected`() {
         assertThrows(IllegalArgumentException::class.java) {
             GlowConfig(alpha = -0.1f)
