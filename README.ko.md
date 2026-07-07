@@ -30,7 +30,10 @@ UI를 회전하는 AI 스타일 그라디언트 글로우로 감싸는 순수 Je
 | `AiGlowSearchBar` | Material 3 `OutlinedTextField` 기반 검색 바. 포커스/눌림에 글로우가 반응하며 placeholder, 좌우 슬롯(아이콘 또는 임의 컴포저블), IME 검색 액션, 활성/읽기전용 상태를 지원합니다. |
 | `AiGlowFloatingActionButton` | 누르는 동안 밝아지는 글로우를 두른 Material 3 FAB. |
 | `AiGlowBox` | *어떤* 콘텐츠든 글로우로 감싸는 범용 컨테이너. 클릭(ripple 포함)도 선택적으로 지원합니다. |
-| `Modifier.aiGlow(...)` | 위 컴포넌트들이 공유하는 원본 Modifier — 원하는 컴포저블에 직접 글로우를 붙일 수 있습니다. |
+| `Modifier.aiGlow(...)` | 위 컴포넌트들이 공유하는 테두리 링 Modifier — 원하는 컴포저블에 직접 테두리 글로우를 붙일 수 있습니다. |
+| `Modifier.aiGlowBackground(...)` | 표면 버전: 컴포넌트 자체를 회전 그라디언트로 채우고 바깥으로 번지게(bloom) 합니다. |
+
+모든 컴포넌트는 독립적인 스타일 파라미터 두 개를 받습니다 — `glowStyle`(테두리 링)과 `backgroundGlowStyle`(표면 채움). 각각 색/투명도/회전 속도를 따로 가지며, 단독으로도 함께도 쓸 수 있습니다.
 
 ## 미리보기
 
@@ -71,11 +74,11 @@ repositories {
 
 // 사용하는 모듈의 build.gradle.kts
 dependencies {
-    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.0.0'
+    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.1.0'
 }
 ```
 
-> 좌표 형식 참고: 이 저장소는 Gradle 모듈이 여러 개(`:app`, `:aiglow`)이므로, JitPack은 단일 모듈용 `com.github.<user>:<repo>:<tag>` 대신 `com.github.<user>.<repo>:<module>:<tag>` 형식(user/repo를 점으로 연결)을 요구합니다. `v1.0.0`은 원하는 릴리스 태그로 바꾸세요.
+> 좌표 형식 참고: 이 저장소는 Gradle 모듈이 여러 개(`:app`, `:aiglow`)이므로, JitPack은 단일 모듈용 `com.github.<user>:<repo>:<tag>` 대신 `com.github.<user>.<repo>:<module>:<tag>` 형식(user/repo를 점으로 연결)을 요구합니다. `v1.1.0`은 원하는 릴리스 태그로 바꾸세요.
 
 > **배포 절차:** [PUBLISHING.md](PUBLISHING.md) 참조.
 
@@ -172,6 +175,30 @@ AiGlowSearchBar(query, onQueryChange, glowStyle = custom)
 ```
 
 상태 간 alpha 차이는 부드럽게 애니메이션되고, 구조적 변화(색/두께/모양)는 상태 경계에서 전환됩니다.
+
+## 배경 글로우 (표면 채움)
+
+테두리 링과 별개로 컴포넌트의 *표면 자체*가 빛날 수 있습니다: `backgroundGlowStyle`은 shape 내부를 회전하는 sweep 그라디언트로 채우고, `blurRadius > 0`이면 가장자리 밖으로 번집니다(bloom). 링과 완전히 독립적이라 전용 팔레트·투명도·회전 속도·easing을 가지며, 둘을 동시에 켤 수도 있습니다:
+
+```kotlin
+AiGlowSearchBar(
+    query = query,
+    onQueryChange = { query = it },
+    glowStyle = AiGlowDefaults.interactiveStyle(),               // 테두리 링 (null이면 없음)
+    backgroundGlowStyle = AiGlowDefaults.interactiveStyle(
+        GlowConfig(
+            colors = AiGlowDefaults.AuroraColors,
+            alpha = 0.35f,            // 텍스트 가독성을 위해 표면은 반투명 권장
+            blurRadius = 20.dp,       // 바깥 번짐 (0.dp = 선명한 채움)
+            rotationDuration = 6_000, // 링 속도와 독립
+        ),
+    ),
+)
+```
+
+원본 Modifier로 아무 컴포저블의 표면이나 빛나게 할 수도 있습니다: `Modifier.aiGlowBackground(config)` — `aiGlow` 뒤에 체이닝하면 함께 렌더링됩니다(`Modifier.aiGlow(ring).aiGlowBackground(fill)`).
+
+fill 모드에서의 `GlowConfig` 필드 의미: `colors` = 표면 그라디언트, `alpha` = 표면 불투명도, `blurRadius` = bloom 거리, `haloColors` = bloom 팔레트 재정의. `strokeWidth`/`haloStrokeWidth`는 사용되지 않습니다. 채움은 콘텐츠 *뒤*에 그려지므로 호스트 컨테이너가 투명해야 하는데, 제공되는 컴포넌트들은 `backgroundGlowStyle` 지정 시 자동으로 투명 기본값으로 전환됩니다(FAB은 elevation 그림자도 제거).
 
 ## 동작 원리 (그리고 빠른 이유)
 

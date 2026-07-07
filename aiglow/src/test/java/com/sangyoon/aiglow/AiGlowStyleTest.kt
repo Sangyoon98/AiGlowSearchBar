@@ -1,8 +1,12 @@
 package com.sangyoon.aiglow
 
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -78,5 +82,29 @@ class AiGlowStyleTest {
         assertEquals(AiGlowDefaults.IdleAlpha, style.idle.alpha, 1e-6f)
         assertEquals(1f, style.focused!!.alpha, 1e-6f)
         assertEquals(1f, style.pressed!!.alpha, 1e-6f)
+    }
+
+    @Test
+    fun `pinnedToShape overrides shape on every non-null state, leaves everything else untouched`() {
+        val style = AiGlowStyle(
+            idle = GlowConfig(shape = CircleShape, alpha = 1f),
+            focused = GlowConfig(shape = CircleShape, colors = listOf(Color.Red, Color.Blue)),
+            pressed = null,
+            hovered = GlowConfig(shape = CircleShape, alpha = 0.5f),
+            disabled = null,
+        )
+        val targetShape = RoundedCornerShape(12.dp)
+
+        val pinned = style.pinnedToShape(targetShape)
+
+        assertEquals(targetShape, pinned.idle.shape)
+        assertEquals(targetShape, pinned.focused!!.shape)
+        assertEquals(targetShape, pinned.hovered!!.shape)
+        assertNull(pinned.pressed)
+        assertNull(pinned.disabled)
+        // Non-shape fields survive untouched. (한국어) shape 외 필드는 그대로 유지된다.
+        assertEquals(1f, pinned.idle.alpha, 1e-6f)
+        assertEquals(listOf(Color.Red, Color.Blue), pinned.focused!!.colors)
+        assertEquals(0.5f, pinned.hovered!!.alpha, 1e-6f)
     }
 }

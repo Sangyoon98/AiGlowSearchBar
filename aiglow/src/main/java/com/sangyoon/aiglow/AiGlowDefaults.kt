@@ -93,4 +93,24 @@ object AiGlowDefaults {
         unfocusedContainerColor = MaterialTheme.colorScheme.surface,
         disabledContainerColor = MaterialTheme.colorScheme.surface,
     )
+
+    /**
+     * Text field colors for background-glow ("glass") mode: containers are fully
+     * transparent so the gradient fill painted *behind* the text field shows through,
+     * and stock borders stay hidden. [AiGlowSearchBar] switches to these automatically
+     * when a `backgroundGlowStyle` is set.
+     *
+     * (한국어) 배경 글로우("글래스") 모드용 텍스트필드 색: 텍스트필드 뒤에 칠해지는
+     * 그라디언트 채움이 비쳐 보이도록 컨테이너를 완전 투명으로 두고, 기본 테두리도
+     * 숨깁니다. `backgroundGlowStyle` 지정 시 [AiGlowSearchBar]가 자동으로 사용합니다.
+     */
+    @Composable
+    fun glassSearchBarColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedBorderColor = Color.Transparent,
+        unfocusedBorderColor = Color.Transparent,
+        disabledBorderColor = Color.Transparent,
+        focusedContainerColor = Color.Transparent,
+        unfocusedContainerColor = Color.Transparent,
+        disabledContainerColor = Color.Transparent,
+    )
 }

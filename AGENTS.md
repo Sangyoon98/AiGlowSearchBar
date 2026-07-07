@@ -12,8 +12,8 @@ Pure Jetpack Compose library (`:aiglow`) that draws a rotating "AI glow" — a b
   - `GlowConfig.kt` — `@Immutable` visual config; halo fallback resolution (`resolvedHalo*`)
   - `AiGlowStyle.kt` — per-interaction-state configs + `resolve()` (priority: disabled > pressed > focused > hovered > idle)
   - `AiGlowDefaults.kt` — palettes, `interactiveStyle()`, `searchBarColors()` (immutable object, Material `*Defaults` convention)
-  - `AiGlow.kt` — engine: `Modifier.aiGlow` overloads, `rememberGlowAngle`, `glowDraw` (drawWithCache renderer)
-  - `AiGlowSearchBar.kt` / `AiGlowFloatingActionButton.kt` / `AiGlowBox.kt` — thin Material wrappers
+  - `AiGlow.kt` — engine: `Modifier.aiGlow` (edge ring) + `Modifier.aiGlowBackground` (surface fill + bloom) overloads, `rememberResolvedGlow`, `rememberGlowAngle`, `glowDraw`/`glowFillDraw` (drawWithCache renderers)
+  - `AiGlowSearchBar.kt` / `AiGlowFloatingActionButton.kt` / `AiGlowBox.kt` — thin Material wrappers; each takes nullable `glowStyle` (ring) + `backgroundGlowStyle` (fill), combinable
 - `:app` — playground demo (`GlowPlaygroundScreen.kt`). Not published.
 
 ## Architecture invariants — do not break

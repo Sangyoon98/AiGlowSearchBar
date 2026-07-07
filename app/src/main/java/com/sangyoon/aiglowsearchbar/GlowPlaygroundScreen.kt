@@ -25,8 +25,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -85,15 +91,17 @@ private const val CustomPaletteIndex = 4
 
 /**
  * Interactive playground exposing every customization knob of the :aiglow library:
- * component choice, ring palette (presets + ordered custom swatches), stroke width,
- * halo colors/width, blur radius, corner radius, rotation duration/easing/on-off,
- * alpha, enabled state, state-aware styling, and a twin preview that proves animation
- * independence. The current selection is also rendered as copy-pastable code.
+ * component choice, border-ring glow (palette presets + ordered custom swatches,
+ * stroke width, halo colors/width, blur radius), background surface glow (own
+ * palette, opacity, bloom, rotation speed), corner radius, rotation
+ * duration/easing/on-off, alpha, enabled state, state-aware styling, and a twin
+ * preview that proves animation independence. The current selection is also rendered
+ * as copy-pastable code.
  *
  * (한국어) :aiglow의 모든 커스터마이징 항목을 실시간으로 조작하는 플레이그라운드입니다.
- * 컴포넌트 선택, 링 팔레트(프리셋 + 순서 있는 커스텀 견본), 링/halo 두께, halo 색,
- * blur·corner radius, 회전 속도·easing·정지, alpha, 활성/비활성, 상태 반응 스타일,
- * 애니메이션 독립성 확인용 트윈 프리뷰를 제공하고, 현재 설정을 복사 가능한 코드로 보여줍니다.
+ * 테두리 링 글로우(팔레트/두께/halo/blur)와 배경 표면 글로우(전용 팔레트/투명도/bloom/
+ * 회전 속도)를 각각 켜고 끌 수 있으며, 트윈 프리뷰로 인스턴스 간 애니메이션 독립성을
+ * 확인하고 현재 설정을 복사 가능한 코드로 보여줍니다.
  */
 @Composable
 fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
@@ -109,17 +117,25 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
     // --- Shape ---
     var cornerRadius by rememberSaveable { mutableStateOf(28f) }
 
-    // --- Ring ---
+    // --- Border ring glow ---
+    var borderGlow by rememberSaveable { mutableStateOf(true) }
     var ringPaletteIndex by rememberSaveable { mutableStateOf(0) }
     var strokeWidth by rememberSaveable { mutableStateOf(2f) }
     val customColors = remember { mutableStateListOf(Color(0xFF2979FF), Color(0xFFD500F9)) }
 
-    // --- Halo ---
+    // --- Ring halo ---
     var blurRadius by rememberSaveable { mutableStateOf(16f) }
     var haloSameColors by rememberSaveable { mutableStateOf(true) }
     var haloPaletteIndex by rememberSaveable { mutableStateOf(1) }
     var haloAutoWidth by rememberSaveable { mutableStateOf(true) }
     var haloWidth by rememberSaveable { mutableStateOf(4f) }
+
+    // --- Background surface glow ---
+    var backgroundGlow by rememberSaveable { mutableStateOf(false) }
+    var bgPaletteIndex by rememberSaveable { mutableStateOf(1) }
+    var bgAlpha by rememberSaveable { mutableStateOf(0.35f) }
+    var bgBloom by rememberSaveable { mutableStateOf(20f) }
+    var bgDuration by rememberSaveable { mutableStateOf(6_000f) }
 
     // --- Animation ---
     var rotationDuration by rememberSaveable { mutableStateOf(4_000f) }
@@ -139,31 +155,59 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
         PresetPalettes[ringPaletteIndex].second
     }
 
-    val config = GlowConfig(
+    val shape = RoundedCornerShape(cornerRadius.dp)
+    val easing = EasingOptions[easingIndex].second
+
+    val ringConfig = GlowConfig(
         colors = ringColors,
         strokeWidth = strokeWidth.dp,
         blurRadius = blurRadius.dp,
         rotationDuration = rotationDuration.roundToInt().coerceAtLeast(1),
-        shape = RoundedCornerShape(cornerRadius.dp),
+        shape = shape,
         haloColors = if (haloSameColors) null else PresetPalettes[haloPaletteIndex].second,
         haloStrokeWidth = if (haloAutoWidth) null else haloWidth.dp,
         alpha = alpha.coerceIn(0f, 1f),
         animated = animated,
-        easing = EasingOptions[easingIndex].second,
+        easing = easing,
     )
-    val style = if (stateAware) AiGlowDefaults.interactiveStyle(config) else AiGlowStyle(idle = config)
+    val bgConfig = GlowConfig(
+        colors = PresetPalettes[bgPaletteIndex].second,
+        blurRadius = bgBloom.dp,
+        rotationDuration = bgDuration.roundToInt().coerceAtLeast(1),
+        shape = shape,
+        alpha = bgAlpha.coerceIn(0f, 1f),
+        animated = animated,
+        easing = easing,
+    )
+
+    fun styleOf(config: GlowConfig): AiGlowStyle =
+        if (stateAware) AiGlowDefaults.interactiveStyle(config) else AiGlowStyle(idle = config)
+
+    val ringStyle = if (borderGlow) styleOf(ringConfig) else null
+    val bgStyle = if (backgroundGlow) styleOf(bgConfig) else null
 
     // Twin runs at half the duration: visibly different speeds prove that animation
     // state is per-instance. (한국어) 트윈은 절반 주기로 회전 — 속도가 다르면 상태 공유가
     // 불가능하다는 증거.
-    val twinConfig = config.copy(rotationDuration = (config.rotationDuration / 2).coerceAtLeast(250))
-    val twinStyle = if (stateAware) AiGlowDefaults.interactiveStyle(twinConfig) else AiGlowStyle(idle = twinConfig)
+    val twinRingStyle = if (borderGlow) {
+        styleOf(ringConfig.copy(rotationDuration = (ringConfig.rotationDuration / 2).coerceAtLeast(250)))
+    } else {
+        null
+    }
+    val twinBgStyle = if (backgroundGlow) {
+        styleOf(bgConfig.copy(rotationDuration = (bgConfig.rotationDuration / 2).coerceAtLeast(250)))
+    } else {
+        null
+    }
 
     Column(modifier = modifier) {
         PreviewPane(
             componentIndex = componentIndex,
-            style = style,
-            twinStyle = if (showTwin) twinStyle else null,
+            ringStyle = ringStyle,
+            bgStyle = bgStyle,
+            twinRingStyle = if (showTwin) twinRingStyle else null,
+            twinBgStyle = if (showTwin) twinBgStyle else null,
+            showTwinInstance = showTwin,
             enabled = enabled,
             query = query,
             onQueryChange = { query = it },
@@ -191,10 +235,13 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
                     onClick = {
                         componentIndex = 0; showLeadingIcon = true; showClearButton = true
                         boxBackground = true; showTwin = false; query = ""; twinQuery = ""
-                        cornerRadius = 28f; ringPaletteIndex = 0; strokeWidth = 2f
+                        cornerRadius = 28f
+                        borderGlow = true; ringPaletteIndex = 0; strokeWidth = 2f
                         customColors.clear(); customColors.addAll(listOf(Color(0xFF2979FF), Color(0xFFD500F9)))
                         blurRadius = 16f; haloSameColors = true; haloPaletteIndex = 1
                         haloAutoWidth = true; haloWidth = 4f
+                        backgroundGlow = false; bgPaletteIndex = 1; bgAlpha = 0.35f
+                        bgBloom = 20f; bgDuration = 6_000f
                         rotationDuration = 4_000f; animated = true; easingIndex = 0
                         alpha = 1f; enabled = true; stateAware = true
                     },
@@ -209,8 +256,8 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
             )
             when (componentIndex) {
                 0 -> {
-                    LabeledSwitch("Leading icon (🔍)", showLeadingIcon) { showLeadingIcon = it }
-                    LabeledSwitch("Clear button (✕)", showClearButton) { showClearButton = it }
+                    LabeledSwitch("Leading search icon", showLeadingIcon) { showLeadingIcon = it }
+                    LabeledSwitch("Clear button", showClearButton) { showClearButton = it }
                 }
                 2 -> LabeledSwitch("Opaque background", boxBackground) { boxBackground = it }
             }
@@ -225,62 +272,94 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
                 onValueChange = { cornerRadius = it },
             )
 
-            SectionTitle("Ring")
-            ChoiceChips(
-                options = PresetPalettes.map { it.first } + "Custom",
-                selectedIndex = ringPaletteIndex,
-                onSelect = { ringPaletteIndex = it },
-            )
-            if (ringPaletteIndex == CustomPaletteIndex) {
-                Text(
-                    text = "Tap swatches to build the gradient — numbers show the color order.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            SectionTitle("Border glow (ring)")
+            LabeledSwitch("Enable border glow", borderGlow) { borderGlow = it }
+            if (borderGlow) {
+                ChoiceChips(
+                    options = PresetPalettes.map { it.first } + "Custom",
+                    selectedIndex = ringPaletteIndex,
+                    onSelect = { ringPaletteIndex = it },
                 )
-                ColorSwatchGrid(
-                    selected = customColors,
-                    onToggle = { color ->
-                        if (!customColors.remove(color)) customColors.add(color)
-                    },
+                if (ringPaletteIndex == CustomPaletteIndex) {
+                    Text(
+                        text = "Tap swatches to build the gradient — numbers show the color order.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    ColorSwatchGrid(
+                        selected = customColors,
+                        onToggle = { color ->
+                            if (!customColors.remove(color)) customColors.add(color)
+                        },
+                    )
+                }
+                LabeledSlider(
+                    label = "Stroke width",
+                    valueText = "${strokeWidth.fmt1()}dp",
+                    value = strokeWidth,
+                    valueRange = 0.5f..10f,
+                    onValueChange = { strokeWidth = it },
+                )
+                LabeledSlider(
+                    label = "Halo blur radius (0 = no halo)",
+                    valueText = "${blurRadius.roundToInt()}dp",
+                    value = blurRadius,
+                    valueRange = 0f..40f,
+                    onValueChange = { blurRadius = it },
+                )
+                LabeledSwitch("Halo colors = ring colors", haloSameColors) { haloSameColors = it }
+                if (!haloSameColors) {
+                    ChoiceChips(
+                        options = PresetPalettes.map { it.first },
+                        selectedIndex = haloPaletteIndex,
+                        onSelect = { haloPaletteIndex = it },
+                    )
+                }
+                LabeledSwitch("Halo width auto (stroke × 2)", haloAutoWidth) { haloAutoWidth = it }
+                LabeledSlider(
+                    label = "Halo stroke width",
+                    valueText = if (haloAutoWidth) "auto" else "${haloWidth.fmt1()}dp",
+                    value = haloWidth,
+                    valueRange = 1f..24f,
+                    onValueChange = { haloWidth = it },
+                    enabled = !haloAutoWidth,
                 )
             }
-            LabeledSlider(
-                label = "Stroke width",
-                valueText = "${strokeWidth.fmt1()}dp",
-                value = strokeWidth,
-                valueRange = 0.5f..10f,
-                onValueChange = { strokeWidth = it },
-            )
 
-            SectionTitle("Halo (shadow)")
-            LabeledSlider(
-                label = "Blur radius (0 = no halo)",
-                valueText = "${blurRadius.roundToInt()}dp",
-                value = blurRadius,
-                valueRange = 0f..40f,
-                onValueChange = { blurRadius = it },
-            )
-            LabeledSwitch("Halo colors = ring colors", haloSameColors) { haloSameColors = it }
-            if (!haloSameColors) {
+            SectionTitle("Background glow (surface)")
+            LabeledSwitch("Enable background glow", backgroundGlow) { backgroundGlow = it }
+            if (backgroundGlow) {
                 ChoiceChips(
                     options = PresetPalettes.map { it.first },
-                    selectedIndex = haloPaletteIndex,
-                    onSelect = { haloPaletteIndex = it },
+                    selectedIndex = bgPaletteIndex,
+                    onSelect = { bgPaletteIndex = it },
+                )
+                LabeledSlider(
+                    label = "Surface opacity",
+                    valueText = bgAlpha.fmt2(),
+                    value = bgAlpha,
+                    valueRange = 0f..1f,
+                    onValueChange = { bgAlpha = it },
+                )
+                LabeledSlider(
+                    label = "Bloom radius (0 = crisp fill)",
+                    valueText = "${bgBloom.roundToInt()}dp",
+                    value = bgBloom,
+                    valueRange = 0f..40f,
+                    onValueChange = { bgBloom = it },
+                )
+                LabeledSlider(
+                    label = "Rotation duration (independent of ring)",
+                    valueText = "${bgDuration.roundToInt()}ms",
+                    value = bgDuration,
+                    valueRange = 500f..12_000f,
+                    onValueChange = { bgDuration = it },
                 )
             }
-            LabeledSwitch("Halo width auto (stroke × 2)", haloAutoWidth) { haloAutoWidth = it }
-            LabeledSlider(
-                label = "Halo stroke width",
-                valueText = if (haloAutoWidth) "auto" else "${haloWidth.fmt1()}dp",
-                value = haloWidth,
-                valueRange = 1f..24f,
-                onValueChange = { haloWidth = it },
-                enabled = !haloAutoWidth,
-            )
 
             SectionTitle("Animation")
             LabeledSlider(
-                label = "Rotation duration",
+                label = "Ring rotation duration",
                 valueText = "${rotationDuration.roundToInt()}ms",
                 value = rotationDuration,
                 valueRange = 500f..10_000f,
@@ -295,7 +374,7 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
 
             SectionTitle("State")
             LabeledSlider(
-                label = "Alpha (overall glow opacity)",
+                label = "Ring alpha (overall glow opacity)",
                 valueText = alpha.fmt2(),
                 value = alpha,
                 valueRange = 0f..1f,
@@ -306,19 +385,27 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
 
             SectionTitle("Generated code")
             ConfigCodeBlock(
-                ringColors = ringColors,
-                strokeWidth = strokeWidth,
-                blurRadius = blurRadius,
-                rotationDuration = rotationDuration.roundToInt(),
-                cornerRadius = cornerRadius.roundToInt(),
-                haloSameColors = haloSameColors,
-                haloColors = if (haloSameColors) null else PresetPalettes[haloPaletteIndex].second,
-                haloAutoWidth = haloAutoWidth,
-                haloWidth = haloWidth,
-                alpha = alpha,
-                animated = animated,
-                easingName = EasingOptions[easingIndex].first,
-                stateAware = stateAware,
+                code = buildConfigCode(
+                    borderGlow = borderGlow,
+                    ringColors = ringColors,
+                    strokeWidth = strokeWidth,
+                    blurRadius = blurRadius,
+                    rotationDuration = rotationDuration.roundToInt(),
+                    cornerRadius = cornerRadius.roundToInt(),
+                    haloSameColors = haloSameColors,
+                    haloColors = if (haloSameColors) null else PresetPalettes[haloPaletteIndex].second,
+                    haloAutoWidth = haloAutoWidth,
+                    haloWidth = haloWidth,
+                    alpha = alpha,
+                    animated = animated,
+                    easingName = EasingOptions[easingIndex].first,
+                    stateAware = stateAware,
+                    backgroundGlow = backgroundGlow,
+                    bgColors = PresetPalettes[bgPaletteIndex].second,
+                    bgAlpha = bgAlpha,
+                    bgBloom = bgBloom,
+                    bgDuration = bgDuration.roundToInt(),
+                ),
             )
         }
     }
@@ -331,8 +418,11 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
 @Composable
 private fun PreviewPane(
     componentIndex: Int,
-    style: AiGlowStyle,
-    twinStyle: AiGlowStyle?,
+    ringStyle: AiGlowStyle?,
+    bgStyle: AiGlowStyle?,
+    twinRingStyle: AiGlowStyle?,
+    twinBgStyle: AiGlowStyle?,
+    showTwinInstance: Boolean,
     enabled: Boolean,
     query: String,
     onQueryChange: (String) -> Unit,
@@ -351,20 +441,24 @@ private fun PreviewPane(
     ) {
         when (componentIndex) {
             0 -> {
-                PlaygroundSearchBar(query, onQueryChange, enabled, showLeadingIcon, showClearButton, style)
-                if (twinStyle != null) {
-                    PlaygroundSearchBar(twinQuery, onTwinQueryChange, enabled, showLeadingIcon, showClearButton, twinStyle)
+                PlaygroundSearchBar(query, onQueryChange, enabled, showLeadingIcon, showClearButton, ringStyle, bgStyle)
+                if (showTwinInstance) {
+                    PlaygroundSearchBar(twinQuery, onTwinQueryChange, enabled, showLeadingIcon, showClearButton, twinRingStyle, twinBgStyle)
                 }
             }
             1 -> Row(horizontalArrangement = Arrangement.spacedBy(32.dp)) {
-                AiGlowFloatingActionButton(onClick = {}, glowStyle = style) { Text("✨") }
-                if (twinStyle != null) {
-                    AiGlowFloatingActionButton(onClick = {}, glowStyle = twinStyle) { Text("✨") }
+                AiGlowFloatingActionButton(onClick = {}, glowStyle = ringStyle, backgroundGlowStyle = bgStyle) {
+                    Icon(Icons.Default.Add, contentDescription = "Add")
+                }
+                if (showTwinInstance) {
+                    AiGlowFloatingActionButton(onClick = {}, glowStyle = twinRingStyle, backgroundGlowStyle = twinBgStyle) {
+                        Icon(Icons.Default.Add, contentDescription = "Add")
+                    }
                 }
             }
             else -> {
-                PlaygroundBox(style, enabled, boxBackground)
-                if (twinStyle != null) PlaygroundBox(twinStyle, enabled, boxBackground)
+                PlaygroundBox(ringStyle, bgStyle, enabled, boxBackground)
+                if (showTwinInstance) PlaygroundBox(twinRingStyle, twinBgStyle, enabled, boxBackground)
             }
         }
     }
@@ -377,7 +471,8 @@ private fun PlaygroundSearchBar(
     enabled: Boolean,
     showLeadingIcon: Boolean,
     showClearButton: Boolean,
-    style: AiGlowStyle,
+    ringStyle: AiGlowStyle?,
+    bgStyle: AiGlowStyle?,
 ) {
     AiGlowSearchBar(
         query = query,
@@ -386,27 +481,38 @@ private fun PlaygroundSearchBar(
         enabled = enabled,
         placeholder = { Text("Search anything…") },
         leadingIcon = if (showLeadingIcon) {
-            { Text("🔍") }
+            { Icon(Icons.Default.Search, contentDescription = null) }
         } else {
             null
         },
         trailingIcon = if (showClearButton && query.isNotEmpty()) {
-            { TextButton(onClick = { onQueryChange("") }) { Text("✕") } }
+            {
+                IconButton(onClick = { onQueryChange("") }) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear query")
+                }
+            }
         } else {
             null
         },
         onSearch = { /* run search */ },
-        glowStyle = style,
+        glowStyle = ringStyle,
+        backgroundGlowStyle = bgStyle,
     )
 }
 
 @Composable
-private fun PlaygroundBox(style: AiGlowStyle, enabled: Boolean, background: Boolean) {
+private fun PlaygroundBox(
+    ringStyle: AiGlowStyle?,
+    bgStyle: AiGlowStyle?,
+    enabled: Boolean,
+    background: Boolean,
+) {
     AiGlowBox(
         modifier = Modifier
             .fillMaxWidth()
             .height(88.dp),
-        glowStyle = style,
+        glowStyle = ringStyle,
+        backgroundGlowStyle = bgStyle,
         enabled = enabled,
         onClick = { /* action */ },
         backgroundColor = if (background) MaterialTheme.colorScheme.surfaceVariant else Color.Unspecified,
@@ -525,8 +631,8 @@ private fun ColorSwatchGrid(selected: List<Color>, onToggle: (Color) -> Unit) {
  * Renders the current selection as copy-pastable Kotlin. (한국어) 현재 설정을
  * 복사해서 바로 쓸 수 있는 Kotlin 코드로 출력합니다.
  */
-@Composable
-private fun ConfigCodeBlock(
+private fun buildConfigCode(
+    borderGlow: Boolean,
     ringColors: List<Color>,
     strokeWidth: Float,
     blurRadius: Float,
@@ -540,9 +646,17 @@ private fun ConfigCodeBlock(
     animated: Boolean,
     easingName: String,
     stateAware: Boolean,
-) {
-    val code = buildString {
-        appendLine("val config = GlowConfig(")
+    backgroundGlow: Boolean,
+    bgColors: List<Color>,
+    bgAlpha: Float,
+    bgBloom: Float,
+    bgDuration: Int,
+): String = buildString {
+    fun styleExpr(configName: String): String =
+        if (stateAware) "AiGlowDefaults.interactiveStyle($configName)" else "AiGlowStyle(idle = $configName)"
+
+    if (borderGlow) {
+        appendLine("val ringConfig = GlowConfig(")
         appendLine("    colors = listOf(${ringColors.joinToString { it.toHexLiteral() }}),")
         appendLine("    strokeWidth = ${strokeWidth.fmt1()}.dp,")
         appendLine("    blurRadius = ${blurRadius.roundToInt()}.dp,")
@@ -558,14 +672,24 @@ private fun ConfigCodeBlock(
         appendLine("    animated = $animated,")
         appendLine("    easing = ${easingName}Easing,")
         appendLine(")")
-        append(
-            if (stateAware) {
-                "val style = AiGlowDefaults.interactiveStyle(config)"
-            } else {
-                "val style = AiGlowStyle(idle = config)"
-            },
-        )
     }
+    if (backgroundGlow) {
+        appendLine("val backgroundConfig = GlowConfig(")
+        appendLine("    colors = listOf(${bgColors.joinToString { it.toHexLiteral() }}),")
+        appendLine("    blurRadius = ${bgBloom.roundToInt()}.dp, // bloom")
+        appendLine("    rotationDuration = $bgDuration,")
+        appendLine("    shape = RoundedCornerShape($cornerRadius.dp),")
+        appendLine("    alpha = ${bgAlpha.fmt2()}f,")
+        appendLine("    animated = $animated,")
+        appendLine("    easing = ${easingName}Easing,")
+        appendLine(")")
+    }
+    appendLine("val glowStyle = ${if (borderGlow) styleExpr("ringConfig") else "null"}")
+    append("val backgroundGlowStyle = ${if (backgroundGlow) styleExpr("backgroundConfig") else "null"}")
+}
+
+@Composable
+private fun ConfigCodeBlock(code: String) {
     Surface(
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = RoundedCornerShape(8.dp),
