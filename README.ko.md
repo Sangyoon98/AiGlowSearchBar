@@ -37,16 +37,21 @@ UI를 회전하는 AI 스타일 그라디언트 글로우로 감싸는 순수 Je
 
 ## 미리보기
 
-_플레이그라운드 앱 스크린샷이 여기에 추가될 예정입니다._
+각 컴포넌트는 여러 스타일 조합을 지원합니다 — 테두리 링 글로우, 배경 표면 채움, 안쪽(inward) 글로우 — 모두 `GlowConfig` / `AiGlowStyle`로 커스터마이징할 수 있습니다.
 
-<!-- :app 플레이그라운드에서 캡처해 docs/images/에 넣은 뒤 주석을 해제하세요:
+**`AiGlowSearchBar`**
 
-| Search Bar | FAB | Box |
-|:---:|:---:|:---:|
-| ![Search bar](docs/images/preview-searchbar.png) | ![FAB](docs/images/preview-fab.png) | ![Box](docs/images/preview-box.png) |
+<p align="center"><img src="docs/images/preview-searchbar.svg" alt="outer glow, rounded, 배경 glass 채움, inner glow 변형의 AiGlowSearchBar" width="820"/></p>
 
-<p align="center"><img src="docs/images/playground.png" alt="플레이그라운드" width="360"/></p>
--->
+**`AiGlowFloatingActionButton`**
+
+<p align="center"><img src="docs/images/preview-fab.svg" alt="outer ring, background, ring+background, inner glow 변형의 AiGlowFloatingActionButton" width="820"/></p>
+
+**`AiGlowBox`**
+
+<p align="center"><img src="docs/images/preview-box.svg" alt="outer glow, inner glow, background glow, ring+background 변형의 AiGlowBox" width="820"/></p>
+
+> 대표적인 설정을 나타낸 예시 렌더링입니다. 모든 파라미터를 조절할 수 있는 실제 애니메이션 버전은 `:app` 플레이그라운드에서 실행해 확인하세요.
 
 ## 설치
 

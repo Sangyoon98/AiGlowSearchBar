@@ -1,0 +1,59 @@
+<svg width="940" height="580" viewBox="0 0 940 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AiGlowSearchBar variants: outer glow, rounded, background glow, inner glow">
+  <defs>
+    <linearGradient id="sb-gemini" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4285F4"/><stop offset="33%" stop-color="#9B72CB"/>
+      <stop offset="66%" stop-color="#D96570"/><stop offset="100%" stop-color="#4285F4"/>
+    </linearGradient>
+    <linearGradient id="sb-aurora" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E5FF"/><stop offset="50%" stop-color="#2979FF"/>
+      <stop offset="100%" stop-color="#D500F9"/>
+    </linearGradient>
+    <linearGradient id="sb-sunset" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6D00"/><stop offset="50%" stop-color="#FF1744"/>
+      <stop offset="100%" stop-color="#D500F9"/>
+    </linearGradient>
+    <linearGradient id="sb-mint" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E676"/><stop offset="50%" stop-color="#00B0FF"/>
+      <stop offset="100%" stop-color="#00E676"/>
+    </linearGradient>
+    <filter id="sb-blur" x="-40%" y="-120%" width="180%" height="340%"><feGaussianBlur stdDeviation="6"/></filter>
+    <clipPath id="sb-clip3"><rect x="40" y="344" width="860" height="64" rx="32"/></clipPath>
+    <clipPath id="sb-clip4"><rect x="40" y="468" width="860" height="64" rx="14"/></clipPath>
+  </defs>
+
+  <rect width="940" height="580" rx="20" fill="#0D1220"/>
+  <text x="40" y="42" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="20" font-weight="700" fill="#E7EAF0">AiGlowSearchBar</text>
+  <text x="900" y="42" text-anchor="end" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="14" fill="#6E7890">edge ring · background fill · inner glow</text>
+
+  <!-- 1) Gemini · outer glow · capsule -->
+  <text x="40" y="88" font-family="ui-monospace,Menlo,monospace" font-size="13" fill="#8B93A7">Gemini · outer glow · capsule (radius 32)</text>
+  <rect x="40" y="96" width="860" height="64" rx="32" fill="none" stroke="url(#sb-gemini)" stroke-width="11" filter="url(#sb-blur)" opacity="0.85"/>
+  <rect x="40" y="96" width="860" height="64" rx="32" fill="#10151F"/>
+  <rect x="40" y="96" width="860" height="64" rx="32" fill="none" stroke="url(#sb-gemini)" stroke-width="2.5"/>
+  <g stroke="#8B93A7" stroke-width="3.2" fill="none" stroke-linecap="round"><circle cx="78" cy="126" r="9"/><line x1="85" y1="133" x2="92" y2="140"/></g>
+  <text x="108" y="133" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="17" fill="#5E687D">Search anything…</text>
+
+  <!-- 2) Aurora · rounded · thicker stroke -->
+  <text x="40" y="212" font-family="ui-monospace,Menlo,monospace" font-size="13" fill="#8B93A7">Aurora · outer glow · rounded (radius 14) · strokeWidth 3.5</text>
+  <rect x="40" y="220" width="860" height="64" rx="14" fill="none" stroke="url(#sb-aurora)" stroke-width="13" filter="url(#sb-blur)" opacity="0.85"/>
+  <rect x="40" y="220" width="860" height="64" rx="14" fill="#10151F"/>
+  <rect x="40" y="220" width="860" height="64" rx="14" fill="none" stroke="url(#sb-aurora)" stroke-width="3.5"/>
+  <g stroke="#8B93A7" stroke-width="3.2" fill="none" stroke-linecap="round"><circle cx="78" cy="250" r="9"/><line x1="85" y1="257" x2="92" y2="264"/></g>
+  <text x="108" y="257" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="17" fill="#5E687D">Search anything…</text>
+
+  <!-- 3) Sunset · background glow (glass) -->
+  <text x="40" y="336" font-family="ui-monospace,Menlo,monospace" font-size="13" fill="#8B93A7">Sunset · backgroundGlowStyle (glass fill, alpha 0.32) + edge ring</text>
+  <rect x="40" y="344" width="860" height="64" rx="32" fill="none" stroke="url(#sb-sunset)" stroke-width="16" filter="url(#sb-blur)" opacity="0.6"/>
+  <g clip-path="url(#sb-clip3)"><rect x="40" y="344" width="860" height="64" fill="url(#sb-sunset)" opacity="0.32"/></g>
+  <rect x="40" y="344" width="860" height="64" rx="32" fill="none" stroke="url(#sb-sunset)" stroke-width="2.5"/>
+  <g stroke="#F3D9C0" stroke-width="3.2" fill="none" stroke-linecap="round"><circle cx="78" cy="374" r="9"/><line x1="85" y1="381" x2="92" y2="388"/></g>
+  <text x="108" y="381" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="17" fill="#F3D9C0">Glowing surface</text>
+
+  <!-- 4) Mint · inner glow (haloDirection = Inward) -->
+  <text x="40" y="460" font-family="ui-monospace,Menlo,monospace" font-size="13" fill="#8B93A7">Mint · haloDirection = Inward (inner border glow) · rounded</text>
+  <rect x="40" y="468" width="860" height="64" rx="14" fill="#10151F"/>
+  <g clip-path="url(#sb-clip4)"><rect x="40" y="468" width="860" height="64" rx="14" fill="none" stroke="url(#sb-mint)" stroke-width="16" filter="url(#sb-blur)" opacity="0.9"/></g>
+  <rect x="40" y="468" width="860" height="64" rx="14" fill="none" stroke="url(#sb-mint)" stroke-width="2.5"/>
+  <g stroke="#8B93A7" stroke-width="3.2" fill="none" stroke-linecap="round"><circle cx="78" cy="498" r="9"/><line x1="85" y1="505" x2="92" y2="512"/></g>
+  <text x="108" y="505" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="17" fill="#5E687D">Search anything…</text>
+</svg>

@@ -1,0 +1,58 @@
+<svg width="940" height="300" viewBox="0 0 940 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AiGlowFloatingActionButton variants: outer ring, background glow, both, inner glow">
+  <defs>
+    <linearGradient id="fb-gemini" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4285F4"/><stop offset="33%" stop-color="#9B72CB"/>
+      <stop offset="66%" stop-color="#D96570"/><stop offset="100%" stop-color="#4285F4"/>
+    </linearGradient>
+    <linearGradient id="fb-aurora" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E5FF"/><stop offset="50%" stop-color="#2979FF"/>
+      <stop offset="100%" stop-color="#D500F9"/>
+    </linearGradient>
+    <linearGradient id="fb-sunset" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6D00"/><stop offset="50%" stop-color="#FF1744"/>
+      <stop offset="100%" stop-color="#D500F9"/>
+    </linearGradient>
+    <linearGradient id="fb-mint" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E676"/><stop offset="50%" stop-color="#00B0FF"/>
+      <stop offset="100%" stop-color="#00E676"/>
+    </linearGradient>
+    <filter id="fb-blur" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7"/></filter>
+    <clipPath id="fb-clip2"><rect x="309" y="86" width="96" height="96" rx="28"/></clipPath>
+    <clipPath id="fb-clip3"><rect x="537" y="86" width="96" height="96" rx="28"/></clipPath>
+    <clipPath id="fb-clip4"><rect x="765" y="86" width="96" height="96" rx="28"/></clipPath>
+  </defs>
+
+  <rect width="940" height="300" rx="20" fill="#0D1220"/>
+  <text x="40" y="42" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="20" font-weight="700" fill="#E7EAF0">AiGlowFloatingActionButton</text>
+
+  <!-- 1) Gemini · outer ring -->
+  <rect x="81" y="86" width="96" height="96" rx="28" fill="none" stroke="url(#fb-gemini)" stroke-width="11" filter="url(#fb-blur)" opacity="0.85"/>
+  <rect x="81" y="86" width="96" height="96" rx="28" fill="#161B26"/>
+  <rect x="81" y="86" width="96" height="96" rx="28" fill="none" stroke="url(#fb-gemini)" stroke-width="2.5"/>
+  <g stroke="#C7CCD6" stroke-width="4" stroke-linecap="round"><line x1="129" y1="118" x2="129" y2="150"/><line x1="113" y1="134" x2="145" y2="134"/></g>
+  <text x="129" y="214" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12.5" fill="#8B93A7">Gemini</text>
+  <text x="129" y="234" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12.5" fill="#6E7890">outer ring</text>
+
+  <!-- 2) Aurora · background glow -->
+  <rect x="309" y="86" width="96" height="96" rx="28" fill="none" stroke="url(#fb-aurora)" stroke-width="15" filter="url(#fb-blur)" opacity="0.6"/>
+  <g clip-path="url(#fb-clip2)"><rect x="309" y="86" width="96" height="96" fill="url(#fb-aurora)" opacity="0.85"/></g>
+  <g stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"><line x1="357" y1="118" x2="357" y2="150"/><line x1="341" y1="134" x2="373" y2="134"/></g>
+  <text x="357" y="214" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12.5" fill="#8B93A7">Aurora</text>
+  <text x="357" y="234" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12.5" fill="#6E7890">background</text>
+
+  <!-- 3) Sunset · both (ring + background) -->
+  <rect x="537" y="86" width="96" height="96" rx="28" fill="none" stroke="url(#fb-sunset)" stroke-width="15" filter="url(#fb-blur)" opacity="0.7"/>
+  <g clip-path="url(#fb-clip3)"><rect x="537" y="86" width="96" height="96" fill="url(#fb-sunset)" opacity="0.8"/></g>
+  <rect x="537" y="86" width="96" height="96" rx="28" fill="none" stroke="url(#fb-sunset)" stroke-width="2.5"/>
+  <g stroke="#FFFFFF" stroke-width="4" stroke-linecap="round"><line x1="585" y1="118" x2="585" y2="150"/><line x1="569" y1="134" x2="601" y2="134"/></g>
+  <text x="585" y="214" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12.5" fill="#8B93A7">Sunset</text>
+  <text x="585" y="234" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12.5" fill="#6E7890">ring + background</text>
+
+  <!-- 4) Mint · inner glow -->
+  <rect x="765" y="86" width="96" height="96" rx="28" fill="#161B26"/>
+  <g clip-path="url(#fb-clip4)"><rect x="765" y="86" width="96" height="96" rx="28" fill="none" stroke="url(#fb-mint)" stroke-width="18" filter="url(#fb-blur)" opacity="0.9"/></g>
+  <rect x="765" y="86" width="96" height="96" rx="28" fill="none" stroke="url(#fb-mint)" stroke-width="2.5"/>
+  <g stroke="#C7CCD6" stroke-width="4" stroke-linecap="round"><line x1="813" y1="118" x2="813" y2="150"/><line x1="797" y1="134" x2="829" y2="134"/></g>
+  <text x="813" y="214" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12.5" fill="#8B93A7">Mint</text>
+  <text x="813" y="234" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="12.5" fill="#6E7890">inner glow</text>
+</svg>

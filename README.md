@@ -37,16 +37,21 @@ Every component takes two independent style parameters — `glowStyle` (edge rin
 
 ## Preview
 
-_Screenshots from the playground app will be added here._
+Each component supports several style combinations — an edge ring glow, a background surface fill, and an inner (inward) glow — all customizable via `GlowConfig` / `AiGlowStyle`.
 
-<!-- Capture from the :app playground, drop the files into docs/images/, then uncomment:
+**`AiGlowSearchBar`**
 
-| Search Bar | FAB | Box |
-|:---:|:---:|:---:|
-| ![Search bar](docs/images/preview-searchbar.png) | ![FAB](docs/images/preview-fab.png) | ![Box](docs/images/preview-box.png) |
+<p align="center"><img src="docs/images/preview-searchbar.svg" alt="AiGlowSearchBar with outer glow, rounded, background glass fill, and inner glow variants" width="820"/></p>
 
-<p align="center"><img src="docs/images/playground.png" alt="Playground" width="360"/></p>
--->
+**`AiGlowFloatingActionButton`**
+
+<p align="center"><img src="docs/images/preview-fab.svg" alt="AiGlowFloatingActionButton with outer ring, background, ring+background, and inner glow variants" width="820"/></p>
+
+**`AiGlowBox`**
+
+<p align="center"><img src="docs/images/preview-box.svg" alt="AiGlowBox with outer glow, inner glow, background glow, and ring+background variants" width="820"/></p>
+
+> Illustrative renderings of representative settings. Run the `:app` playground for the live, animated version where every parameter is adjustable.
 
 ## Installation
 

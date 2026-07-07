@@ -1,0 +1,55 @@
+<svg width="940" height="540" viewBox="0 0 940 540" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="AiGlowBox variants: outer glow, inner glow, background glow, ring plus background">
+  <defs>
+    <linearGradient id="bx-gemini" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4285F4"/><stop offset="33%" stop-color="#9B72CB"/>
+      <stop offset="66%" stop-color="#D96570"/><stop offset="100%" stop-color="#4285F4"/>
+    </linearGradient>
+    <linearGradient id="bx-aurora" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E5FF"/><stop offset="50%" stop-color="#2979FF"/>
+      <stop offset="100%" stop-color="#D500F9"/>
+    </linearGradient>
+    <linearGradient id="bx-sunset" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF6D00"/><stop offset="50%" stop-color="#FF1744"/>
+      <stop offset="100%" stop-color="#D500F9"/>
+    </linearGradient>
+    <linearGradient id="bx-mint" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E676"/><stop offset="50%" stop-color="#00B0FF"/>
+      <stop offset="100%" stop-color="#00E676"/>
+    </linearGradient>
+    <filter id="bx-blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+    <clipPath id="bx-clip2"><rect x="497" y="90" width="403" height="160" rx="18"/></clipPath>
+    <clipPath id="bx-clip3"><rect x="40" y="298" width="403" height="160" rx="18"/></clipPath>
+    <clipPath id="bx-clip4"><rect x="497" y="298" width="403" height="160" rx="18"/></clipPath>
+  </defs>
+
+  <rect width="940" height="540" rx="20" fill="#0D1220"/>
+  <text x="40" y="42" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="20" font-weight="700" fill="#E7EAF0">AiGlowBox</text>
+  <text x="900" y="42" text-anchor="end" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="14" fill="#6E7890">wrap any content</text>
+
+  <!-- 1) Gemini · outer glow -->
+  <rect x="40" y="90" width="403" height="160" rx="18" fill="none" stroke="url(#bx-gemini)" stroke-width="12" filter="url(#bx-blur)" opacity="0.8"/>
+  <rect x="40" y="90" width="403" height="160" rx="18" fill="#161B26"/>
+  <rect x="40" y="90" width="403" height="160" rx="18" fill="none" stroke="url(#bx-gemini)" stroke-width="2.5"/>
+  <text x="241" y="164" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="17" font-weight="600" fill="#E7EAF0">Outer glow</text>
+  <text x="241" y="190" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="13" fill="#8B93A7">Gemini · glowStyle</text>
+
+  <!-- 2) Aurora · inner glow -->
+  <rect x="497" y="90" width="403" height="160" rx="18" fill="#161B26"/>
+  <g clip-path="url(#bx-clip2)"><rect x="497" y="90" width="403" height="160" rx="18" fill="none" stroke="url(#bx-aurora)" stroke-width="22" filter="url(#bx-blur)" opacity="0.9"/></g>
+  <rect x="497" y="90" width="403" height="160" rx="18" fill="none" stroke="url(#bx-aurora)" stroke-width="2.5"/>
+  <text x="698" y="164" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="17" font-weight="600" fill="#E7EAF0">Inner glow</text>
+  <text x="698" y="190" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="13" fill="#8B93A7">Aurora · haloDirection = Inward</text>
+
+  <!-- 3) Sunset · background glow -->
+  <rect x="40" y="298" width="403" height="160" rx="18" fill="none" stroke="url(#bx-sunset)" stroke-width="18" filter="url(#bx-blur)" opacity="0.55"/>
+  <g clip-path="url(#bx-clip3)"><rect x="40" y="298" width="403" height="160" fill="url(#bx-sunset)" opacity="0.45"/></g>
+  <text x="241" y="372" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">Background glow</text>
+  <text x="241" y="398" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="13" fill="#F3D9C0">Sunset · backgroundGlowStyle</text>
+
+  <!-- 4) Mint · ring + background -->
+  <rect x="497" y="298" width="403" height="160" rx="18" fill="none" stroke="url(#bx-mint)" stroke-width="16" filter="url(#bx-blur)" opacity="0.6"/>
+  <g clip-path="url(#bx-clip4)"><rect x="497" y="298" width="403" height="160" fill="url(#bx-mint)" opacity="0.4"/></g>
+  <rect x="497" y="298" width="403" height="160" rx="18" fill="none" stroke="url(#bx-mint)" stroke-width="2.5"/>
+  <text x="698" y="372" text-anchor="middle" font-family="-apple-system,'Segoe UI',Roboto,sans-serif" font-size="17" font-weight="600" fill="#FFFFFF">Ring + background</text>
+  <text x="698" y="398" text-anchor="middle" font-family="ui-monospace,Menlo,monospace" font-size="13" fill="#CDEBD8">Mint · both styles combined</text>
+</svg>
