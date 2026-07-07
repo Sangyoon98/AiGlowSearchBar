@@ -202,4 +202,10 @@ Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for the bra
 
 ## License
 
-TBD.
+```
+MIT License
+
+Copyright (c) 2026 Sangyoon
+```
+
+See [LICENSE](LICENSE) for the full text.
