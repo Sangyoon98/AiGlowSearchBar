@@ -39,7 +39,13 @@ enum class HaloDirection {
     Inward,
 
     /**
-     * Bleeds both ways symmetrically. (한국어) 안팎 양방향으로 번집니다.
+     * Bleeds both ways symmetrically. Note: rendered as two complementary clipped
+     * passes, which can leave a hairline (~1px) seam along the outline if the crisp
+     * ring doesn't cover it — i.e. with `strokeWidth = 0.dp` or translucent ring
+     * colors. The default 2dp opaque ring masks it completely.
+     * (한국어) 안팎 양방향으로 번집니다. 상보적인 두 클리핑 패스로 합성되므로 링이
+     * 가리지 못하는 설정(strokeWidth = 0.dp 또는 반투명 링 색)에서는 외곽선을 따라
+     * ~1px의 미세한 seam이 보일 수 있습니다. 기본 2dp 불투명 링은 완전히 가립니다.
      */
     Both,
 }

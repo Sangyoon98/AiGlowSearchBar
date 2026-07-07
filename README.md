@@ -152,7 +152,7 @@ val config = GlowConfig(
 | `alpha` | `Float` | `1f` | Overall glow opacity |
 | `animated` | `Boolean` | `true` | Turn rotation on/off |
 | `easing` | `Easing` | `LinearEasing` | Rotation easing curve |
-| `haloDirection` | `HaloDirection` | `Outward` | Which side of the edge the halo bleeds: `Outward`, `Inward` (inner glow, drawn above the content) or `Both` |
+| `haloDirection` | `HaloDirection` | `Outward` | Which side of the edge the ring's halo bleeds: `Outward`, `Inward` (inner glow, drawn above the content) or `Both`. Ring only — ignored by the background glow |
 
 ### Inner border glow
 
@@ -213,7 +213,7 @@ AiGlowSearchBar(
 
 Or glow any composable's surface with the raw modifier: `Modifier.aiGlowBackground(config)` — chain after `aiGlow` to combine (`Modifier.aiGlow(ring).aiGlowBackground(fill)`).
 
-`GlowConfig` field semantics in fill mode: `colors` = surface gradient, `alpha` = surface opacity, `blurRadius` = bloom distance, `haloColors` = bloom palette override; `strokeWidth`/`haloStrokeWidth` are unused. The fill draws *behind* the content, so hosts need transparent containers — the bundled components switch to transparent defaults automatically when `backgroundGlowStyle` is set (and the FAB also drops its elevation shadow).
+`GlowConfig` field semantics in fill mode: `colors` = surface gradient, `alpha` = surface opacity, `blurRadius` = bloom distance, `haloColors` = bloom palette override; `strokeWidth`/`haloStrokeWidth`/`haloDirection` are unused (the fill's bloom is always outward). The fill draws *behind* the content, so hosts need transparent containers — the bundled components switch to transparent defaults automatically when `backgroundGlowStyle` is set (and the FAB also drops its elevation shadow).
 
 ## How it works (and why it's fast)
 
@@ -231,7 +231,7 @@ The `:app` module ships a playground where every customization option can be twe
 - Component switcher (Search Bar / FAB / Box) with per-component toggles (icons, clear button, background)
 - Ring palette presets + an ordered custom-palette builder (tap swatches, numbers show gradient order)
 - Sliders for stroke width, halo width, blur radius, corner radius (rectangle ↔ capsule), rotation duration and alpha
-- Halo color override, animation on/off, easing selection
+- Halo color override, halo direction (outward / inward / both), animation on/off, easing selection
 - Enabled/disabled and state-aware styling toggles
 - A "twin preview" running at 0.5× duration to verify animation independence between instances
 - A **Generated code** block that renders your current selection as copy-pastable Kotlin

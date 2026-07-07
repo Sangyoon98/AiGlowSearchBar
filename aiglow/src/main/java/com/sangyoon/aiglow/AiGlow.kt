@@ -277,21 +277,27 @@ internal fun closeSweepLoop(colors: List<Color>): List<Color> = when {
  * layered translucent strokes, so `blurRadius` is honored on every supported API level.
  *
  * Halo direction ([GlowConfig.haloDirection]): the halo stroke is centered on the
- * edge, so clipping selects which half survives. The outward half is clipped to
- * strictly *outside* the outline and drawn behind the content (also making it
- * alpha-correct over translucent containers, mirroring [glowFillDraw]'s bloom clip);
- * the inward half is clipped to *inside* and drawn **above** the content, because an
- * opaque container would otherwise hide it completely.
+ * edge, so clipping selects which half survives. In pure Outward mode the pass is
+ * drawn unclipped behind the content — a single draw has nothing to double-composite
+ * with, and this preserves the pre-1.2.0 look where translucent containers let the
+ * stroke's inner half shine through. The inward half is clipped to *inside* the
+ * outline and drawn **above** the content, because an opaque container would
+ * otherwise hide it completely. Only in Both mode is the outward half additionally
+ * clipped to strictly outside ([ClipOp.Difference]) so the two passes never overlap —
+ * without that, the edge region would receive the same light twice over translucent
+ * containers.
  *
  * (한국어) 테두리 링의 순수 draw 레이어입니다. drawWithCache로 Outline/셰이더/Paint를
  * 캐시하고, angle·alpha는 람다로 지연 읽기해 draw phase만 무효화합니다(애니메이션 중
  * recomposition 0회). 캔버스 회전은 모양까지 돌리므로 셰이더 local matrix만 회전시키고,
  * Modifier.blur()는 콘텐츠 전체를 흐리게 하고 API 31 미만에서 무시되므로
  * BlurMaskFilter(API 28+) + 다층 스트로크 폴백(API 26~27)으로 halo를 그립니다.
- * halo 방향: 스트로크가 가장자리 중앙에 걸쳐 있으므로 클리핑으로 살릴 절반을 고릅니다 —
- * 바깥 절반은 외곽선 밖으로만 클리핑해 콘텐츠 뒤에(반투명 컨테이너에서도 alpha 정확),
- * 안쪽 절반은 외곽선 안으로 클리핑해 콘텐츠 **위**에 그립니다(불투명 컨테이너가 가리지
- * 않도록).
+ * halo 방향: 스트로크가 가장자리 중앙에 걸쳐 있으므로 클리핑으로 살릴 절반을 고릅니다.
+ * 순수 Outward는 단일 패스라 이중 합성이 없어 클리핑 없이 콘텐츠 뒤에 그려 이전 버전의
+ * 룩(반투명 컨테이너에 안쪽 절반이 비침)을 보존하고, 안쪽 절반은 외곽선 안으로 클리핑해
+ * 콘텐츠 **위**에 그립니다(불투명 컨테이너가 가리지 않도록). Both 모드에서만 바깥 절반을
+ * 외곽선 밖으로 추가 클리핑해 두 패스가 절대 겹치지 않게 합니다 — 겹치면 반투명 컨테이너
+ * 위에서 가장자리가 같은 빛을 두 번 받게 됩니다.
  */
 internal fun Modifier.glowDraw(
     config: GlowConfig,
@@ -352,11 +358,18 @@ internal fun Modifier.glowDraw(
             ringShader.setLocalMatrix(shaderMatrix)
             haloShader.setLocalMatrix(shaderMatrix)
 
-            // 1) Outward half of the halo, behind the content, clipped strictly
-            // outside the outline so translucent containers never double-composite
-            // with it. (한국어) 바깥 절반 halo — 콘텐츠 뒤, 외곽선 밖으로만 클리핑.
+            // 1) Outward halo, behind the content. Clipped to strictly outside the
+            // outline ONLY when an inward pass will also run (Both) — that is the
+            // only case where an unclipped draw would double-composite the edge
+            // region; pure Outward keeps the classic unclipped single pass.
+            // (한국어) 바깥 halo — 안쪽 패스가 함께 도는 Both 모드에서만 외곽선 밖으로
+            // 클리핑(이중 합성 방지). 순수 Outward는 기존과 동일한 무클리핑 단일 패스.
             if (hasHalo && bleedsOutward) {
-                clipPath(outlinePath, clipOp = ClipOp.Difference) {
+                if (bleedsInward) {
+                    clipPath(outlinePath, clipOp = ClipOp.Difference) {
+                        drawHaloPass(outline, haloBrush, nativeHaloPath, nativeHaloPaint, fallbackHaloLayers, alpha)
+                    }
+                } else {
                     drawHaloPass(outline, haloBrush, nativeHaloPath, nativeHaloPaint, fallbackHaloLayers, alpha)
                 }
             }
