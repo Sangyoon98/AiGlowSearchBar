@@ -24,14 +24,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.center
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.SweepGradientShader
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
@@ -273,11 +276,22 @@ internal fun closeSweepLoop(colors: List<Color>): List<Color> = when {
  * from API 28 in hardware (Skia HWUI), and below API 28 we approximate the halo with
  * layered translucent strokes, so `blurRadius` is honored on every supported API level.
  *
+ * Halo direction ([GlowConfig.haloDirection]): the halo stroke is centered on the
+ * edge, so clipping selects which half survives. The outward half is clipped to
+ * strictly *outside* the outline and drawn behind the content (also making it
+ * alpha-correct over translucent containers, mirroring [glowFillDraw]'s bloom clip);
+ * the inward half is clipped to *inside* and drawn **above** the content, because an
+ * opaque container would otherwise hide it completely.
+ *
  * (한국어) 테두리 링의 순수 draw 레이어입니다. drawWithCache로 Outline/셰이더/Paint를
  * 캐시하고, angle·alpha는 람다로 지연 읽기해 draw phase만 무효화합니다(애니메이션 중
  * recomposition 0회). 캔버스 회전은 모양까지 돌리므로 셰이더 local matrix만 회전시키고,
  * Modifier.blur()는 콘텐츠 전체를 흐리게 하고 API 31 미만에서 무시되므로
  * BlurMaskFilter(API 28+) + 다층 스트로크 폴백(API 26~27)으로 halo를 그립니다.
+ * halo 방향: 스트로크가 가장자리 중앙에 걸쳐 있으므로 클리핑으로 살릴 절반을 고릅니다 —
+ * 바깥 절반은 외곽선 밖으로만 클리핑해 콘텐츠 뒤에(반투명 컨테이너에서도 alpha 정확),
+ * 안쪽 절반은 외곽선 안으로 클리핑해 콘텐츠 **위**에 그립니다(불투명 컨테이너가 가리지
+ * 않도록).
  */
 internal fun Modifier.glowDraw(
     config: GlowConfig,
@@ -288,6 +302,7 @@ internal fun Modifier.glowDraw(
     val haloColors = closeSweepLoop(config.resolvedHaloColors)
     val outline = config.shape.createOutline(size, layoutDirection, this)
     val center = size.center
+    val outlinePath = Path().apply { addOutline(outline) }
 
     val ringShader = SweepGradientShader(center = center, colors = ringColors)
     val ringBrush = ShaderBrush(ringShader)
@@ -299,15 +314,14 @@ internal fun Modifier.glowDraw(
     val haloBrush = ShaderBrush(haloShader)
     val shaderMatrix = Matrix()
 
+    val bleedsOutward = config.haloDirection != HaloDirection.Inward
+    val bleedsInward = config.haloDirection != HaloDirection.Outward
+
     // API 28+ (Skia HWUI pipeline): real gaussian halo via BlurMaskFilter.
     // API 26–27: layered-stroke approximation, since mask filters are not
     // hardware-accelerated there. (한국어) 28+는 진짜 블러, 26~27은 다층 근사.
     val useNativeBlur = blurPx > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
-    val nativeHaloPath: android.graphics.Path? = if (useNativeBlur) {
-        Path().apply { addOutline(outline) }.asAndroidPath()
-    } else {
-        null
-    }
+    val nativeHaloPath: android.graphics.Path? = if (useNativeBlur) outlinePath.asAndroidPath() else null
     val nativeHaloPaint: android.graphics.Paint? = if (useNativeBlur) {
         android.graphics.Paint().apply {
             isAntiAlias = true
@@ -328,6 +342,7 @@ internal fun Modifier.glowDraw(
     } else {
         emptyList()
     }
+    val hasHalo = nativeHaloPaint != null || fallbackHaloLayers.isNotEmpty()
 
     onDrawWithContent {
         // State reads happen here, in the draw phase only. (한국어) 상태 읽기는 draw에서만.
@@ -337,13 +352,12 @@ internal fun Modifier.glowDraw(
             ringShader.setLocalMatrix(shaderMatrix)
             haloShader.setLocalMatrix(shaderMatrix)
 
-            // 1) Soft halo, behind the content. (한국어) 콘텐츠 뒤 halo.
-            if (nativeHaloPaint != null && nativeHaloPath != null) {
-                nativeHaloPaint.alpha = (alpha * 255f).roundToInt()
-                drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPath(nativeHaloPath, nativeHaloPaint) }
-            } else {
-                fallbackHaloLayers.forEach { (stroke, layerAlpha) ->
-                    drawOutline(outline = outline, brush = haloBrush, alpha = alpha * layerAlpha, style = stroke)
+            // 1) Outward half of the halo, behind the content, clipped strictly
+            // outside the outline so translucent containers never double-composite
+            // with it. (한국어) 바깥 절반 halo — 콘텐츠 뒤, 외곽선 밖으로만 클리핑.
+            if (hasHalo && bleedsOutward) {
+                clipPath(outlinePath, clipOp = ClipOp.Difference) {
+                    drawHaloPass(outline, haloBrush, nativeHaloPath, nativeHaloPaint, fallbackHaloLayers, alpha)
                 }
             }
         }
@@ -352,9 +366,44 @@ internal fun Modifier.glowDraw(
         drawContent()
 
         if (alpha > 0f) {
-            // 3) Crisp ring on top, so an opaque container never covers its inner half.
+            // 3) Inward half of the halo, above the content — an opaque container
+            // would completely hide it if drawn behind. (한국어) 안쪽 절반 halo —
+            // 뒤에 그리면 불투명 컨테이너에 가려지므로 콘텐츠 위에 그린다.
+            if (hasHalo && bleedsInward) {
+                clipPath(outlinePath, clipOp = ClipOp.Intersect) {
+                    drawHaloPass(outline, haloBrush, nativeHaloPath, nativeHaloPaint, fallbackHaloLayers, alpha)
+                }
+            }
+
+            // 4) Crisp ring topmost, so an opaque container never covers its inner half.
             // (한국어) 불투명 컨테이너가 링 안쪽 절반을 가리지 않도록 맨 위에 그린다.
             drawOutline(outline = outline, brush = ringBrush, alpha = alpha, style = ringStroke)
+        }
+    }
+}
+
+/**
+ * Draws one halo pass (native BlurMaskFilter stroke on API 28+, layered translucent
+ * strokes below) with the caller's clip already applied. Extracted so the outward and
+ * inward passes cannot drift apart.
+ *
+ * (한국어) halo 한 패스를 그립니다(28+는 네이티브 블러, 미만은 다층 스트로크). 호출부가
+ * 클리핑을 먼저 적용합니다. 바깥/안쪽 패스 구현이 어긋나지 않도록 추출했습니다.
+ */
+private fun DrawScope.drawHaloPass(
+    outline: Outline,
+    haloBrush: Brush,
+    nativeHaloPath: android.graphics.Path?,
+    nativeHaloPaint: android.graphics.Paint?,
+    fallbackHaloLayers: List<Pair<Stroke, Float>>,
+    alpha: Float,
+) {
+    if (nativeHaloPaint != null && nativeHaloPath != null) {
+        nativeHaloPaint.alpha = (alpha * 255f).roundToInt()
+        drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPath(nativeHaloPath, nativeHaloPaint) }
+    } else {
+        fallbackHaloLayers.forEach { (stroke, layerAlpha) ->
+            drawOutline(outline = outline, brush = haloBrush, alpha = alpha * layerAlpha, style = stroke)
         }
     }
 }

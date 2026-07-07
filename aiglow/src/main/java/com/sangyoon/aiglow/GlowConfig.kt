@@ -10,6 +10,41 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
+ * Direction in which the ring's blurred halo bleeds relative to the shape edge.
+ *
+ * Why an enum property on [GlowConfig] instead of a separate modifier or component
+ * parameter: the inner glow is the *same* halo — same colors, width, blur — merely
+ * clipped to the other side of the outline. Modeling it as a config property keeps
+ * the whole style/state machinery ([AiGlowStyle], interactive resolution, animated
+ * alpha) working unchanged and adds zero new parameters to the components.
+ *
+ * (한국어) 링 halo가 도형 가장자리를 기준으로 번지는 방향입니다. 별도 Modifier나
+ * 컴포넌트 파라미터가 아니라 GlowConfig 속성으로 둔 이유: 안쪽 글로우는 같은 halo를
+ * 반대쪽으로 클리핑한 것뿐이라, 속성 하나면 기존 스타일/상태 체계가 그대로 동작하고
+ * 컴포넌트에 새 파라미터를 추가할 필요가 없기 때문입니다.
+ */
+enum class HaloDirection {
+    /**
+     * Bleeds outward past the edge — the classic outer glow (default).
+     * (한국어) 가장자리 바깥으로 번지는 기본 글로우.
+     */
+    Outward,
+
+    /**
+     * Bleeds inward across the component's surface, like light spilling in from the
+     * border. Drawn *above* the content so opaque containers don't hide it.
+     * (한국어) 테두리에서 컴포넌트 안쪽으로 흘러드는 글로우. 불투명 컨테이너에 가려지지
+     * 않도록 콘텐츠 *위*에 그려집니다.
+     */
+    Inward,
+
+    /**
+     * Bleeds both ways symmetrically. (한국어) 안팎 양방향으로 번집니다.
+     */
+    Both,
+}
+
+/**
  * Immutable set of visual parameters for a single glow state.
  *
  * Why an `@Immutable` data class: the Compose compiler cannot infer stability for
@@ -63,6 +98,14 @@ import androidx.compose.ui.unit.dp
  * @property easing Easing of the rotation. [LinearEasing] gives a constant, seamless
  *   spin; a non-linear easing produces a pulsing rotation.
  *   (한국어) 회전 easing. 기본 LinearEasing은 일정한 속도로 돕니다.
+ * @property haloDirection Which side of the edge the ring's halo bleeds toward:
+ *   [HaloDirection.Outward] (default), [HaloDirection.Inward] (inner glow, drawn above
+ *   the content) or [HaloDirection.Both]. Only affects the ring ([aiGlow]); the
+ *   background glow's bloom is always outward. Declared last so 1.x positional
+ *   constructor calls keep compiling.
+ *   (한국어) 링 halo가 번지는 방향 — Outward(기본)/Inward(안쪽 글로우, 콘텐츠 위에
+ *   그려짐)/Both. 링([aiGlow])에만 적용되고 배경 글로우의 bloom은 항상 바깥입니다.
+ *   기존 positional 생성자 호출 호환을 위해 마지막에 선언했습니다.
  */
 @Immutable
 data class GlowConfig(
@@ -76,6 +119,7 @@ data class GlowConfig(
     val alpha: Float = 1f,
     val animated: Boolean = true,
     val easing: Easing = LinearEasing,
+    val haloDirection: HaloDirection = HaloDirection.Outward,
 ) {
     init {
         require(colors.isNotEmpty()) {

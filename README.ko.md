@@ -74,11 +74,11 @@ repositories {
 
 // 사용하는 모듈의 build.gradle.kts
 dependencies {
-    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.1.0'
+    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.2.0'
 }
 ```
 
-> 좌표 형식 참고: 이 저장소는 Gradle 모듈이 여러 개(`:app`, `:aiglow`)이므로, JitPack은 단일 모듈용 `com.github.<user>:<repo>:<tag>` 대신 `com.github.<user>.<repo>:<module>:<tag>` 형식(user/repo를 점으로 연결)을 요구합니다. `v1.1.0`은 원하는 릴리스 태그로 바꾸세요.
+> 좌표 형식 참고: 이 저장소는 Gradle 모듈이 여러 개(`:app`, `:aiglow`)이므로, JitPack은 단일 모듈용 `com.github.<user>:<repo>:<tag>` 대신 `com.github.<user>.<repo>:<module>:<tag>` 형식(user/repo를 점으로 연결)을 요구합니다. `v1.2.0`은 원하는 릴리스 태그로 바꾸세요.
 
 > **배포 절차:** [PUBLISHING.md](PUBLISHING.md) 참조.
 
@@ -152,6 +152,21 @@ val config = GlowConfig(
 | `alpha` | `Float` | `1f` | 글로우 전체 불투명도 |
 | `animated` | `Boolean` | `true` | 회전 on/off |
 | `easing` | `Easing` | `LinearEasing` | 회전 easing 곡선 |
+| `haloDirection` | `HaloDirection` | `Outward` | halo가 번지는 방향: `Outward`, `Inward`(안쪽 글로우, 콘텐츠 위에 그려짐), `Both` |
+
+### 안쪽 테두리 글로우
+
+`haloDirection = HaloDirection.Inward`로 설정하면 링의 halo가 바깥이 아니라 컴포넌트 *안쪽*으로 번집니다 — 테두리에서 빛이 스며드는 효과입니다. `Both`는 양방향 대칭으로 번집니다. 안쪽 절반은 콘텐츠 위에 그려지므로 불투명 컨테이너 위에서도 보입니다. 컴포넌트에 새 파라미터가 필요 없는 config 필드라서 상태별 스타일링도 평소처럼 동작합니다:
+
+```kotlin
+AiGlowSearchBar(
+    query = query,
+    onQueryChange = { query = it },
+    glowStyle = AiGlowDefaults.interactiveStyle(
+        GlowConfig(haloDirection = HaloDirection.Inward),
+    ),
+)
+```
 
 기본 제공 팔레트: `AiGlowDefaults.GeminiColors`, `AuroraColors`, `SunsetColors`, `MintColors`.
 

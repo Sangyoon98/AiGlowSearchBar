@@ -61,6 +61,7 @@ import com.sangyoon.aiglow.AiGlowFloatingActionButton
 import com.sangyoon.aiglow.AiGlowSearchBar
 import com.sangyoon.aiglow.AiGlowStyle
 import com.sangyoon.aiglow.GlowConfig
+import com.sangyoon.aiglow.HaloDirection
 import kotlin.math.roundToInt
 
 /** Preset ring/halo palettes offered by the playground. (한국어) 프리셋 팔레트 목록. */
@@ -129,6 +130,7 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
     var haloPaletteIndex by rememberSaveable { mutableStateOf(1) }
     var haloAutoWidth by rememberSaveable { mutableStateOf(true) }
     var haloWidth by rememberSaveable { mutableStateOf(4f) }
+    var haloDirectionIndex by rememberSaveable { mutableStateOf(0) }
 
     // --- Background surface glow ---
     var backgroundGlow by rememberSaveable { mutableStateOf(false) }
@@ -169,6 +171,7 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
         alpha = alpha.coerceIn(0f, 1f),
         animated = animated,
         easing = easing,
+        haloDirection = HaloDirection.entries[haloDirectionIndex],
     )
     val bgConfig = GlowConfig(
         colors = PresetPalettes[bgPaletteIndex].second,
@@ -239,7 +242,7 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
                         borderGlow = true; ringPaletteIndex = 0; strokeWidth = 2f
                         customColors.clear(); customColors.addAll(listOf(Color(0xFF2979FF), Color(0xFFD500F9)))
                         blurRadius = 16f; haloSameColors = true; haloPaletteIndex = 1
-                        haloAutoWidth = true; haloWidth = 4f
+                        haloAutoWidth = true; haloWidth = 4f; haloDirectionIndex = 0
                         backgroundGlow = false; bgPaletteIndex = 1; bgAlpha = 0.35f
                         bgBloom = 20f; bgDuration = 6_000f
                         rotationDuration = 4_000f; animated = true; easingIndex = 0
@@ -324,6 +327,15 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
                     onValueChange = { haloWidth = it },
                     enabled = !haloAutoWidth,
                 )
+                Text(
+                    text = "Halo direction (Inward = inner glow)",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                ChoiceChips(
+                    options = HaloDirection.entries.map { it.name },
+                    selectedIndex = haloDirectionIndex,
+                    onSelect = { haloDirectionIndex = it },
+                )
             }
 
             SectionTitle("Background glow (surface)")
@@ -396,6 +408,7 @@ fun GlowPlaygroundScreen(modifier: Modifier = Modifier) {
                     haloColors = if (haloSameColors) null else PresetPalettes[haloPaletteIndex].second,
                     haloAutoWidth = haloAutoWidth,
                     haloWidth = haloWidth,
+                    haloDirection = HaloDirection.entries[haloDirectionIndex],
                     alpha = alpha,
                     animated = animated,
                     easingName = EasingOptions[easingIndex].first,
@@ -642,6 +655,7 @@ private fun buildConfigCode(
     haloColors: List<Color>?,
     haloAutoWidth: Boolean,
     haloWidth: Float,
+    haloDirection: HaloDirection,
     alpha: Float,
     animated: Boolean,
     easingName: String,
@@ -667,6 +681,9 @@ private fun buildConfigCode(
         }
         if (!haloAutoWidth) {
             appendLine("    haloStrokeWidth = ${haloWidth.fmt1()}.dp,")
+        }
+        if (haloDirection != HaloDirection.Outward) {
+            appendLine("    haloDirection = HaloDirection.${haloDirection.name},")
         }
         appendLine("    alpha = ${alpha.fmt2()}f,")
         appendLine("    animated = $animated,")
