@@ -24,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.center
+import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ShaderBrush
@@ -31,7 +32,9 @@ import androidx.compose.ui.graphics.SweepGradientShader
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import kotlin.math.roundToInt
@@ -98,6 +101,94 @@ fun Modifier.aiGlow(
     interactionSource: InteractionSource? = null,
     enabled: Boolean = true,
 ): Modifier {
+    val glow = rememberResolvedGlow(glowStyle, interactionSource, enabled)
+    val ring = remember(glow.structural, glow.angle, glow.alpha) {
+        Modifier.glowDraw(glow.structural, { glow.angle.value }, { glow.alpha.value })
+    }
+    return this then ring
+}
+
+/**
+ * Fills the component's own surface with a rotating sweep-gradient glow: the shape is
+ * painted with the gradient and, when [GlowConfig.blurRadius] > 0, a blurred copy of
+ * the fill blooms outward — the component itself appears to emit light.
+ *
+ * This is the *surface* counterpart of [aiGlow] (which draws an edge ring). The two
+ * are independent modifiers so each can have its own colors, opacity, rotation speed
+ * and easing — chain both for a combined effect:
+ * `Modifier.aiGlow(ringStyle).aiGlowBackground(fillStyle)` (ring stays on top because
+ * the outer modifier wraps the inner one's drawing).
+ *
+ * Field semantics in fill mode: `colors` = surface gradient, `alpha` = surface
+ * opacity, `blurRadius` = outward bloom distance (0.dp = crisp fill, no bloom),
+ * `haloColors` = bloom palette override; `strokeWidth`/`haloStrokeWidth` are unused.
+ * The fill is drawn *behind* the host's content — an opaque container/background on
+ * the host will cover it, so pair it with transparent container colors (the bundled
+ * components handle this automatically).
+ *
+ * (한국어) 컴포넌트 표면 자체를 회전 그라디언트로 채우는 배경 글로우입니다. blurRadius가
+ * 0보다 크면 채움의 블러 사본이 바깥으로 번져(bloom) 컴포넌트가 스스로 빛나는 것처럼
+ * 보입니다. [aiGlow](테두리 링)와 독립된 Modifier라 색/투명도/회전 속도를 따로 설정할 수
+ * 있고, 둘을 체이닝하면 함께 렌더링됩니다. fill 모드에서 strokeWidth/haloStrokeWidth는
+ * 사용되지 않으며, haloColors는 bloom 색을 재정의합니다. 채움은 콘텐츠 *뒤*에 그려지므로
+ * 호스트의 불투명 배경이 있으면 가려집니다(제공 컴포넌트들은 자동 처리).
+ *
+ * @param glowConfig Visual parameters; customize via `copy()`. (한국어) copy()로 커스터마이징.
+ */
+@Composable
+fun Modifier.aiGlowBackground(glowConfig: GlowConfig): Modifier {
+    val angle = rememberGlowAngle(glowConfig.rotationDuration, glowConfig.animated, glowConfig.easing)
+    val fill = remember(glowConfig, angle) {
+        Modifier.glowFillDraw(glowConfig.copy(alpha = 1f), { angle.value }, { glowConfig.alpha })
+    }
+    return this then fill
+}
+
+/**
+ * Interaction-aware overload of [aiGlowBackground]: same per-state resolution and
+ * animated-alpha transitions as the [aiGlow] style overload, applied to the surface
+ * fill instead of the edge ring.
+ *
+ * (한국어) [aiGlowBackground]의 상태 반응 오버로드 — [aiGlow] 스타일 오버로드와 동일한
+ * 상태 해석/알파 전환을 표면 채움에 적용합니다.
+ */
+@Composable
+fun Modifier.aiGlowBackground(
+    glowStyle: AiGlowStyle,
+    interactionSource: InteractionSource? = null,
+    enabled: Boolean = true,
+): Modifier {
+    val glow = rememberResolvedGlow(glowStyle, interactionSource, enabled)
+    val fill = remember(glow.structural, glow.angle, glow.alpha) {
+        Modifier.glowFillDraw(glow.structural, { glow.angle.value }, { glow.alpha.value })
+    }
+    return this then fill
+}
+
+/**
+ * The composition-side state bundle shared by the ring and fill style overloads:
+ * the alpha-neutral resolved config plus the angle/alpha States whose reads are
+ * deferred to the draw phase.
+ *
+ * Why extracted: [aiGlow] and [aiGlowBackground] must resolve interaction state
+ * identically; one implementation keeps the priority rules and cache-key discipline
+ * (alpha out of the remember key) from drifting apart.
+ *
+ * (한국어) 링/배경 스타일 오버로드가 공유하는 composition 상태 묶음. 상태 해석 규칙과
+ * 캐시 키 규율(alpha는 remember 키에서 제외)이 두 구현에서 어긋나지 않도록 추출했습니다.
+ */
+internal class ResolvedGlow(
+    val structural: GlowConfig,
+    val angle: State<Float>,
+    val alpha: State<Float>,
+)
+
+@Composable
+internal fun rememberResolvedGlow(
+    glowStyle: AiGlowStyle,
+    interactionSource: InteractionSource?,
+    enabled: Boolean,
+): ResolvedGlow {
     val source = interactionSource ?: remember { MutableInteractionSource() }
     val focused by source.collectIsFocusedAsState()
     val pressed by source.collectIsPressedAsState()
@@ -110,11 +201,7 @@ fun Modifier.aiGlow(
     val structural = resolved.copy(alpha = 1f)
     val alpha = animateFloatAsState(targetValue = resolved.alpha, label = "AiGlowAlpha")
     val angle = rememberGlowAngle(structural.rotationDuration, structural.animated, structural.easing)
-
-    val glow = remember(structural, angle, alpha) {
-        Modifier.glowDraw(structural, { angle.value }, { alpha.value })
-    }
-    return this then glow
+    return ResolvedGlow(structural, angle, alpha)
 }
 
 /**
@@ -164,7 +251,7 @@ internal fun closeSweepLoop(colors: List<Color>): List<Color> = when {
 }
 
 /**
- * The pure draw layer. Creates no composition state.
+ * The pure draw layer for the edge ring. Creates no composition state.
  *
  * Why drawWithCache: [androidx.compose.ui.graphics.Outline] creation (Path work),
  * shader allocation and the halo [android.graphics.Paint] are too expensive to build
@@ -186,9 +273,9 @@ internal fun closeSweepLoop(colors: List<Color>): List<Color> = when {
  * from API 28 in hardware (Skia HWUI), and below API 28 we approximate the halo with
  * layered translucent strokes, so `blurRadius` is honored on every supported API level.
  *
- * (한국어) 순수 draw 레이어입니다. drawWithCache로 Outline/셰이더/Paint를 캐시하고,
- * angle·alpha는 람다로 지연 읽기해 draw phase만 무효화합니다(애니메이션 중 recomposition 0회).
- * 캔버스 회전은 모양까지 돌리므로 셰이더 local matrix만 회전시키고,
+ * (한국어) 테두리 링의 순수 draw 레이어입니다. drawWithCache로 Outline/셰이더/Paint를
+ * 캐시하고, angle·alpha는 람다로 지연 읽기해 draw phase만 무효화합니다(애니메이션 중
+ * recomposition 0회). 캔버스 회전은 모양까지 돌리므로 셰이더 local matrix만 회전시키고,
  * Modifier.blur()는 콘텐츠 전체를 흐리게 하고 API 31 미만에서 무시되므로
  * BlurMaskFilter(API 28+) + 다층 스트로크 폴백(API 26~27)으로 halo를 그립니다.
  */
@@ -269,5 +356,104 @@ internal fun Modifier.glowDraw(
             // (한국어) 불투명 컨테이너가 링 안쪽 절반을 가리지 않도록 맨 위에 그린다.
             drawOutline(outline = outline, brush = ringBrush, alpha = alpha, style = ringStroke)
         }
+    }
+}
+
+/**
+ * The pure draw layer for the surface fill. Same caching/deferral discipline as
+ * [glowDraw], but paints the shape's interior instead of its edge.
+ *
+ * Rendering: (1) when blurRadius > 0, a blurred *filled* copy of the shape is drawn,
+ * clipped to strictly *outside* the outline; (2) the crisp gradient fill covers the
+ * interior. Everything is drawn with `onDrawBehind` because a surface belongs
+ * strictly under the content.
+ *
+ * Why the bloom pass is clipped to the outline's exterior rather than relying on the
+ * crisp fill to "cover" its interior half: both passes use standard SrcOver alpha
+ * blending. At `alpha == 1` the crisp fill fully replaces whatever the bloom painted
+ * underneath, but at `alpha < 1` (the common case — [AiGlowDefaults.interactiveStyle]'s
+ * idle state alone is already below 1) the deep interior — beyond `blurRadius` from
+ * the edge, where the blur mask has no effect — would get painted *twice* at the same
+ * alpha, compositing to `1 - (1 - alpha)^2`: visibly more opaque than the edges, where
+ * the mask fades toward zero. Clipping the bloom to the exterior means it can never
+ * overlap the region the crisp fill paints, so the result is alpha-correct regardless
+ * of `alpha`, `blurRadius`, or shape size.
+ *
+ * (한국어) 표면 채움의 순수 draw 레이어. [glowDraw]와 동일한 캐시/지연 읽기 규율을
+ * 따르되 가장자리 대신 내부를 칠합니다. bloom 패스를 외곽선 바깥쪽으로만 클리핑하는
+ * 이유: 두 패스 모두 기본 SrcOver 블렌딩을 쓰므로, alpha==1이면 크리스프 채움이 아래
+ * bloom을 완전히 대체하지만 alpha<1(흔한 기본값 — interactiveStyle의 idle조차 이미 1
+ * 미만)에서는 blurRadius보다 안쪽 깊은 영역이 같은 alpha로 두 번 칠해져
+ * 1-(1-alpha)^2로 합성되어 가장자리보다 중심부가 눈에 띄게 진해지는 오파시티 밴딩이
+ * 생깁니다. bloom을 외곽선 바깥으로 클리핑하면 크리스프 채움 영역과 절대 겹치지 않아
+ * alpha·blurRadius·shape 크기와 무관하게 항상 정확합니다.
+ */
+internal fun Modifier.glowFillDraw(
+    config: GlowConfig,
+    angleProvider: () -> Float,
+    alphaProvider: () -> Float,
+): Modifier = drawWithCache {
+    val fillColors = closeSweepLoop(config.colors)
+    val bloomColors = closeSweepLoop(config.resolvedHaloColors)
+    val outline = config.shape.createOutline(size, layoutDirection, this)
+    val center = size.center
+    val outlinePath = Path().apply { addOutline(outline) }
+
+    val fillShader = SweepGradientShader(center = center, colors = fillColors)
+    val fillBrush = ShaderBrush(fillShader)
+
+    val blurPx = config.blurRadius.toPx()
+    val bloomShader = SweepGradientShader(center = center, colors = bloomColors)
+    val bloomBrush = ShaderBrush(bloomShader)
+    val shaderMatrix = Matrix()
+
+    val useNativeBlur = blurPx > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
+    val nativeBloomPath: android.graphics.Path? = if (useNativeBlur) outlinePath.asAndroidPath() else null
+    val nativeBloomPaint: android.graphics.Paint? = if (useNativeBlur) {
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            style = android.graphics.Paint.Style.FILL
+            shader = bloomShader
+            maskFilter = BlurMaskFilter(blurPx, BlurMaskFilter.Blur.NORMAL)
+        }
+    } else {
+        null
+    }
+    // API 26–27 bloom approximation: translucent strokes expanding outward from the
+    // shape edge. (한국어) 26~27 bloom 근사: 가장자리에서 바깥으로 퍼지는 반투명 스트로크.
+    val fallbackBloomLayers: List<Pair<Stroke, Float>> = if (blurPx > 0f && !useNativeBlur) {
+        val layerCount = 6
+        List(layerCount) { index ->
+            val fraction = (index + 1) / layerCount.toFloat()
+            Stroke(width = blurPx * 2f * fraction) to ((1f - fraction) * 0.28f + 0.04f)
+        }
+    } else {
+        emptyList()
+    }
+
+    onDrawBehind {
+        val alpha = alphaProvider().coerceIn(0f, 1f)
+        if (alpha <= 0f) return@onDrawBehind
+
+        shaderMatrix.setRotate(angleProvider(), center.x, center.y)
+        fillShader.setLocalMatrix(shaderMatrix)
+        bloomShader.setLocalMatrix(shaderMatrix)
+
+        // 1) Outward bloom, clipped to strictly outside the outline so it never
+        // double-composites with the crisp fill below. (한국어) 외곽선 바깥으로만
+        // 클리핑된 bloom — 아래 크리스프 채움과 절대 겹치지 않는다.
+        clipPath(outlinePath, clipOp = ClipOp.Difference) {
+            if (nativeBloomPaint != null && nativeBloomPath != null) {
+                nativeBloomPaint.alpha = (alpha * 255f).roundToInt()
+                drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPath(nativeBloomPath, nativeBloomPaint) }
+            } else {
+                fallbackBloomLayers.forEach { (stroke, layerAlpha) ->
+                    drawOutline(outline = outline, brush = bloomBrush, alpha = alpha * layerAlpha, style = stroke)
+                }
+            }
+        }
+
+        // 2) Crisp gradient surface. (한국어) 선명한 그라디언트 표면.
+        drawOutline(outline = outline, brush = fillBrush, alpha = alpha, style = Fill)
     }
 }

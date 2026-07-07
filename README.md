@@ -30,7 +30,10 @@ A pure Jetpack Compose library that wraps your UI in a rotating, AI-style gradie
 | `AiGlowSearchBar` | A Material 3 `OutlinedTextField`-based search bar with glow that reacts to focus/press. Slots for placeholder, leading/trailing content, IME search action, enabled/read-only states. |
 | `AiGlowFloatingActionButton` | A Material 3 FAB wrapped in glow that brightens while pressed. |
 | `AiGlowBox` | A general-purpose container that puts a glow around *any* content, optionally clickable (ripple included). |
-| `Modifier.aiGlow(...)` | The raw modifier behind all of the above — attach a glow to any composable yourself. |
+| `Modifier.aiGlow(...)` | The raw edge-ring modifier behind all of the above — attach a border glow to any composable yourself. |
+| `Modifier.aiGlowBackground(...)` | The surface counterpart: fills the component itself with a rotating gradient that blooms outward. |
+
+Every component takes two independent style parameters — `glowStyle` (edge ring) and `backgroundGlowStyle` (surface fill) — each with its own colors, opacity and rotation speed. Use either alone or both together.
 
 ## Preview
 
@@ -71,11 +74,11 @@ repositories {
 
 // your module's build.gradle.kts
 dependencies {
-    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.0.0'
+    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.1.0'
 }
 ```
 
-> Note the coordinate format: since this repo has multiple Gradle modules (`:app`, `:aiglow`), JitPack requires `com.github.<user>.<repo>:<module>:<tag>` (dots joining user/repo) rather than the single-module `com.github.<user>:<repo>:<tag>` form. Replace `v1.0.0` with the desired release tag.
+> Note the coordinate format: since this repo has multiple Gradle modules (`:app`, `:aiglow`), JitPack requires `com.github.<user>.<repo>:<module>:<tag>` (dots joining user/repo) rather than the single-module `com.github.<user>:<repo>:<tag>` form. Replace `v1.1.0` with the desired release tag.
 
 > **Release flow:** see [PUBLISHING.md](PUBLISHING.md).
 
@@ -172,6 +175,30 @@ AiGlowSearchBar(query, onQueryChange, glowStyle = custom)
 ```
 
 Alpha differences between states animate smoothly; structural changes (colors, thickness, shape) switch at the state boundary.
+
+## Background glow (surface fill)
+
+Besides the edge ring, the component's *surface itself* can glow: `backgroundGlowStyle` fills the shape with a rotating sweep gradient and, when `blurRadius > 0`, blooms outward past the edge. It is fully independent from the ring — own palette, opacity, rotation speed, easing — and both can run at once:
+
+```kotlin
+AiGlowSearchBar(
+    query = query,
+    onQueryChange = { query = it },
+    glowStyle = AiGlowDefaults.interactiveStyle(),               // edge ring (or null for none)
+    backgroundGlowStyle = AiGlowDefaults.interactiveStyle(
+        GlowConfig(
+            colors = AiGlowDefaults.AuroraColors,
+            alpha = 0.35f,            // keep the surface translucent for readable text
+            blurRadius = 20.dp,       // outward bloom (0.dp = crisp fill)
+            rotationDuration = 6_000, // independent of the ring's speed
+        ),
+    ),
+)
+```
+
+Or glow any composable's surface with the raw modifier: `Modifier.aiGlowBackground(config)` — chain after `aiGlow` to combine (`Modifier.aiGlow(ring).aiGlowBackground(fill)`).
+
+`GlowConfig` field semantics in fill mode: `colors` = surface gradient, `alpha` = surface opacity, `blurRadius` = bloom distance, `haloColors` = bloom palette override; `strokeWidth`/`haloStrokeWidth` are unused. The fill draws *behind* the content, so hosts need transparent containers — the bundled components switch to transparent defaults automatically when `backgroundGlowStyle` is set (and the FAB also drops its elevation shadow).
 
 ## How it works (and why it's fast)
 
