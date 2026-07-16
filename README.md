@@ -79,11 +79,11 @@ repositories {
 
 // your module's build.gradle.kts
 dependencies {
-    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.2.0'
+    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.2.1'
 }
 ```
 
-> Note the coordinate format: since this repo has multiple Gradle modules (`:app`, `:aiglow`), JitPack requires `com.github.<user>.<repo>:<module>:<tag>` (dots joining user/repo) rather than the single-module `com.github.<user>:<repo>:<tag>` form. Replace `v1.2.0` with the desired release tag.
+> Note the coordinate format: since this repo has multiple Gradle modules (`:app`, `:aiglow`), JitPack requires `com.github.<user>.<repo>:<module>:<tag>` (dots joining user/repo) rather than the single-module `com.github.<user>:<repo>:<tag>` form. Replace `v1.2.1` with the desired release tag.
 
 > **Release flow:** see [PUBLISHING.md](PUBLISHING.md).
 
