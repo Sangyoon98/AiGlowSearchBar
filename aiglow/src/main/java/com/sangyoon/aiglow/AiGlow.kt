@@ -24,10 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.center
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ClipOp
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.SweepGradientShader
@@ -43,10 +41,10 @@ import androidx.compose.ui.graphics.nativeCanvas
 import kotlin.math.roundToInt
 
 /**
- * Draws a rotating AI glow around the content: a soft blurred halo *behind* the
- * content and a crisp sweep-gradient ring *on top* of its edge.
+ * Draws a flowing AI glow around the content: a soft blurred halo *behind* the
+ * content and a crisp perimeter-gradient ring *on top* of its edge.
  *
- * Why a @Composable modifier factory instead of `Modifier.composed`: the rotation
+ * Why a @Composable modifier factory instead of `Modifier.composed`: the flow phase
  * must live in composition ([rememberInfiniteTransition]), and `composed` re-runs its
  * lambda on every materialization, defeating skipping (the Compose API guidelines
  * discourage it). A composable factory stores the transition in an independent
@@ -59,7 +57,7 @@ import kotlin.math.roundToInt
  * pins the instance so the node only updates when the config actually changes.
  *
  * (한국어) 콘텐츠 뒤에는 블러 halo를, 가장자리 위에는 선명한 그라디언트 링을 그리는
- * Modifier입니다. composed 대신 @Composable 팩토리를 쓴 이유: 회전 상태가 호출 지점별
+ * Modifier입니다. composed 대신 @Composable 팩토리를 쓴 이유: 흐름 상태가 호출 지점별
  * composition slot에 격리되어 인스턴스 간 간섭이 구조적으로 불가능하고, composed의
  * skip 무력화 비용도 피할 수 있기 때문입니다. 반환 Modifier를 remember로 고정해
  * 검색어 입력 같은 recomposition에서 draw 캐시가 버려지지 않게 합니다.
@@ -208,7 +206,7 @@ internal fun rememberResolvedGlow(
 }
 
 /**
- * Creates the 0°→360° infinitely repeating rotation state.
+ * Creates one infinitely repeating flow cycle, represented as legacy 0°→360° values.
  *
  * Why separated from drawing: splitting "state creation (composition phase)" from
  * "rendering (draw phase)" lets one transition drive multiple layers and keeps each
@@ -244,16 +242,6 @@ internal fun rememberGlowAngle(
 }
 
 /**
- * Closes the sweep-gradient color loop so no seam is visible at the 0°/360° boundary.
- * (한국어) 0°/360° 경계에서 이음새가 보이지 않도록 색 순환을 닫는다.
- */
-internal fun closeSweepLoop(colors: List<Color>): List<Color> = when {
-    colors.size == 1 -> colors + colors
-    colors.first() != colors.last() -> colors + colors.first()
-    else -> colors
-}
-
-/**
  * The pure draw layer for the edge ring. Creates no composition state.
  *
  * Why drawWithCache: [androidx.compose.ui.graphics.Outline] creation (Path work),
@@ -266,9 +254,12 @@ internal fun closeSweepLoop(colors: List<Color>): List<Color> = when {
  * composition and layout never run during the animation (official performance guide
  * "defer reads" + the three-phase model). At 60–120fps this is the core optimization.
  *
- * Why the shader's local matrix rotates instead of the canvas: rotating the canvas
- * would spin the outline (a rounded rectangle would visibly tilt); rotating the
- * shader matrix moves only the gradient colors along the fixed outline.
+ * Why a perimeter color carrier plus a continuous path mask: a center-based sweep
+ * maps angle to color, so one degree covers different physical distances on the long
+ * and short sides of a rectangle. A cached bitmap mesh maps palette phase to
+ * accumulated outline length, while the original path supplies one anti-aliased
+ * stroke/blur mask. The phase therefore advances uniformly around the perimeter
+ * without segment gaps, corner overdraw, or rotating the canvas/outline.
  *
  * Why BlurMaskFilter instead of `Modifier.blur()`: `Modifier.blur()` applies a
  * RenderEffect to *everything* the node draws — including your content — and is
@@ -289,7 +280,10 @@ internal fun closeSweepLoop(colors: List<Color>): List<Color> = when {
  *
  * (한국어) 테두리 링의 순수 draw 레이어입니다. drawWithCache로 Outline/셰이더/Paint를
  * 캐시하고, angle·alpha는 람다로 지연 읽기해 draw phase만 무효화합니다(애니메이션 중
- * recomposition 0회). 캔버스 회전은 모양까지 돌리므로 셰이더 local matrix만 회전시키고,
+ * recomposition 0회). 중심각 sweep은 직사각형의 긴 변/짧은 변에서 실제 이동 거리가
+ * 달라지므로, 캐시한 bitmap mesh에 누적 둘레 길이 기준 색상 phase를 매핑하고 원본 path를
+ * 하나의 연속 AA/blur mask로 사용합니다. 선분 틈이나 모서리 중첩 없이 테두리 어디서나
+ * 같은 둘레 비율로 흐르며 캔버스와 외곽선은 회전시키지 않습니다.
  * Modifier.blur()는 콘텐츠 전체를 흐리게 하고 API 31 미만에서 무시되므로
  * BlurMaskFilter(API 28+) + 다층 스트로크 폴백(API 26~27)으로 halo를 그립니다.
  * halo 방향: 스트로크가 가장자리 중앙에 걸쳐 있으므로 클리핑으로 살릴 절반을 고릅니다.
@@ -304,21 +298,34 @@ internal fun Modifier.glowDraw(
     angleProvider: () -> Float,
     alphaProvider: () -> Float,
 ): Modifier = drawWithCache {
-    val ringColors = closeSweepLoop(config.colors)
-    val haloColors = closeSweepLoop(config.resolvedHaloColors)
     val outline = config.shape.createOutline(size, layoutDirection, this)
-    val center = size.center
     val outlinePath = Path().apply { addOutline(outline) }
-
-    val ringShader = SweepGradientShader(center = center, colors = ringColors)
-    val ringBrush = ShaderBrush(ringShader)
-    val ringStroke = Stroke(width = config.strokeWidth.toPx())
+    val nativeOutlinePath = outlinePath.asAndroidPath()
+    val ringWidthPx = config.strokeWidth.toPx()
+    val ringMaskPaint = android.graphics.Paint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.WHITE
+        style = android.graphics.Paint.Style.STROKE
+        strokeWidth = ringWidthPx
+        strokeCap = android.graphics.Paint.Cap.BUTT
+        strokeJoin = android.graphics.Paint.Join.MITER
+    }
+    val ringGradient = PerimeterGradient(
+        nativeOutlinePath,
+        config.colors,
+        carrierWidthPx = maxOf(ringWidthPx * 4f, 8f),
+    )
+    val ringLayer = PerimeterMaskLayer(
+        gradient = ringGradient,
+        path = nativeOutlinePath,
+        maskPaints = listOf(ringMaskPaint),
+        width = size.width,
+        height = size.height,
+        outsetPx = maxOf(ringWidthPx * 2f, 4f),
+    )
 
     val blurPx = config.blurRadius.toPx()
     val haloWidthPx = config.resolvedHaloStrokeWidth.toPx()
-    val haloShader = SweepGradientShader(center = center, colors = haloColors)
-    val haloBrush = ShaderBrush(haloShader)
-    val shaderMatrix = Matrix()
 
     val bleedsOutward = config.haloDirection != HaloDirection.Inward
     val bleedsInward = config.haloDirection != HaloDirection.Outward
@@ -327,36 +334,61 @@ internal fun Modifier.glowDraw(
     // API 26–27: layered-stroke approximation, since mask filters are not
     // hardware-accelerated there. (한국어) 28+는 진짜 블러, 26~27은 다층 근사.
     val useNativeBlur = blurPx > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
-    val nativeHaloPath: android.graphics.Path? = if (useNativeBlur) outlinePath.asAndroidPath() else null
-    val nativeHaloPaint: android.graphics.Paint? = if (useNativeBlur) {
-        android.graphics.Paint().apply {
+    val haloMaskPaints: List<android.graphics.Paint> = if (useNativeBlur) {
+        listOf(android.graphics.Paint().apply {
             isAntiAlias = true
+            color = android.graphics.Color.WHITE
             style = android.graphics.Paint.Style.STROKE
             strokeWidth = haloWidthPx
-            shader = haloShader
+            strokeCap = android.graphics.Paint.Cap.BUTT
+            strokeJoin = android.graphics.Paint.Join.ROUND
             maskFilter = BlurMaskFilter(blurPx, BlurMaskFilter.Blur.NORMAL)
-        }
-    } else {
-        null
-    }
-    val fallbackHaloLayers: List<Pair<Stroke, Float>> = if (blurPx > 0f && !useNativeBlur) {
+        })
+    } else if (blurPx > 0f) {
         val layerCount = 6
         List(layerCount) { index ->
             val fraction = (index + 1) / layerCount.toFloat()
-            Stroke(width = haloWidthPx + blurPx * 2f * fraction) to ((1f - fraction) * 0.28f + 0.04f)
+            android.graphics.Paint().apply {
+                isAntiAlias = true
+                color = android.graphics.Color.WHITE
+                alpha = (((1f - fraction) * 0.28f + 0.04f) * 255f).roundToInt()
+                style = android.graphics.Paint.Style.STROKE
+                strokeWidth = haloWidthPx + blurPx * 2f * fraction
+                strokeCap = android.graphics.Paint.Cap.BUTT
+                strokeJoin = android.graphics.Paint.Join.ROUND
+            }
         }
     } else {
         emptyList()
     }
-    val hasHalo = nativeHaloPaint != null || fallbackHaloLayers.isNotEmpty()
+    val maxHaloWidthPx = haloWidthPx + if (useNativeBlur) 0f else blurPx * 2f
+    val haloGradient = if (haloMaskPaints.isNotEmpty()) {
+        PerimeterGradient(
+            nativeOutlinePath,
+            config.resolvedHaloColors,
+            carrierWidthPx = maxHaloWidthPx + blurPx * 8f + 8f,
+        )
+    } else {
+        null
+    }
+    val haloLayer = haloGradient?.let { gradient ->
+        PerimeterMaskLayer(
+            gradient = gradient,
+            path = nativeOutlinePath,
+            maskPaints = haloMaskPaints,
+            width = size.width,
+            height = size.height,
+            outsetPx = maxHaloWidthPx / 2f + blurPx * 4f + 4f,
+        )
+    }
 
     onDrawWithContent {
         // State reads happen here, in the draw phase only. (한국어) 상태 읽기는 draw에서만.
         val alpha = alphaProvider().coerceIn(0f, 1f)
         if (alpha > 0f) {
-            shaderMatrix.setRotate(angleProvider(), center.x, center.y)
-            ringShader.setLocalMatrix(shaderMatrix)
-            haloShader.setLocalMatrix(shaderMatrix)
+            val angle = angleProvider()
+            ringGradient.applyPhase(angle)
+            haloGradient?.applyPhase(angle)
 
             // 1) Outward halo, behind the content. Clipped to strictly outside the
             // outline ONLY when an inward pass will also run (Both) — that is the
@@ -364,13 +396,13 @@ internal fun Modifier.glowDraw(
             // region; pure Outward keeps the classic unclipped single pass.
             // (한국어) 바깥 halo — 안쪽 패스가 함께 도는 Both 모드에서만 외곽선 밖으로
             // 클리핑(이중 합성 방지). 순수 Outward는 기존과 동일한 무클리핑 단일 패스.
-            if (hasHalo && bleedsOutward) {
+            if (haloLayer != null && bleedsOutward) {
                 if (bleedsInward) {
                     clipPath(outlinePath, clipOp = ClipOp.Difference) {
-                        drawHaloPass(outline, haloBrush, nativeHaloPath, nativeHaloPaint, fallbackHaloLayers, alpha)
+                        drawPerimeterLayer(haloLayer, alpha)
                     }
                 } else {
-                    drawHaloPass(outline, haloBrush, nativeHaloPath, nativeHaloPaint, fallbackHaloLayers, alpha)
+                    drawPerimeterLayer(haloLayer, alpha)
                 }
             }
         }
@@ -382,43 +414,29 @@ internal fun Modifier.glowDraw(
             // 3) Inward half of the halo, above the content — an opaque container
             // would completely hide it if drawn behind. (한국어) 안쪽 절반 halo —
             // 뒤에 그리면 불투명 컨테이너에 가려지므로 콘텐츠 위에 그린다.
-            if (hasHalo && bleedsInward) {
+            if (haloLayer != null && bleedsInward) {
                 clipPath(outlinePath, clipOp = ClipOp.Intersect) {
-                    drawHaloPass(outline, haloBrush, nativeHaloPath, nativeHaloPaint, fallbackHaloLayers, alpha)
+                    drawPerimeterLayer(haloLayer, alpha)
                 }
             }
 
             // 4) Crisp ring topmost, so an opaque container never covers its inner half.
             // (한국어) 불투명 컨테이너가 링 안쪽 절반을 가리지 않도록 맨 위에 그린다.
-            drawOutline(outline = outline, brush = ringBrush, alpha = alpha, style = ringStroke)
+            drawPerimeterLayer(ringLayer, alpha)
         }
     }
 }
 
 /**
- * Draws one halo pass (native BlurMaskFilter stroke on API 28+, layered translucent
- * strokes below) with the caller's clip already applied. Extracted so the outward and
- * inward passes cannot drift apart.
+ * Draws one cached perimeter color layer through its continuous outline mask.
+ * Extracted so crisp ring and clipped halo passes share the exact same compositing
+ * path and cannot drift apart.
  *
- * (한국어) halo 한 패스를 그립니다(28+는 네이티브 블러, 미만은 다층 스트로크). 호출부가
- * 클리핑을 먼저 적용합니다. 바깥/안쪽 패스 구현이 어긋나지 않도록 추출했습니다.
+ * (한국어) 캐시된 둘레 색상 레이어를 연속 외곽선 mask로 합성합니다. 선명한 링과 클리핑된
+ * halo 패스가 동일한 합성 경로를 공유하도록 추출했습니다.
  */
-private fun DrawScope.drawHaloPass(
-    outline: Outline,
-    haloBrush: Brush,
-    nativeHaloPath: android.graphics.Path?,
-    nativeHaloPaint: android.graphics.Paint?,
-    fallbackHaloLayers: List<Pair<Stroke, Float>>,
-    alpha: Float,
-) {
-    if (nativeHaloPaint != null && nativeHaloPath != null) {
-        nativeHaloPaint.alpha = (alpha * 255f).roundToInt()
-        drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPath(nativeHaloPath, nativeHaloPaint) }
-    } else {
-        fallbackHaloLayers.forEach { (stroke, layerAlpha) ->
-            drawOutline(outline = outline, brush = haloBrush, alpha = alpha * layerAlpha, style = stroke)
-        }
-    }
+private fun DrawScope.drawPerimeterLayer(layer: PerimeterMaskLayer, alpha: Float) {
+    drawIntoCanvas { canvas -> layer.draw(canvas.nativeCanvas, alpha) }
 }
 
 /**
@@ -455,8 +473,8 @@ internal fun Modifier.glowFillDraw(
     angleProvider: () -> Float,
     alphaProvider: () -> Float,
 ): Modifier = drawWithCache {
-    val fillColors = closeSweepLoop(config.colors)
-    val bloomColors = closeSweepLoop(config.resolvedHaloColors)
+    val fillColors = closeGradientLoop(config.colors)
+    val bloomColors = closeGradientLoop(config.resolvedHaloColors)
     val outline = config.shape.createOutline(size, layoutDirection, this)
     val center = size.center
     val outlinePath = Path().apply { addOutline(outline) }
