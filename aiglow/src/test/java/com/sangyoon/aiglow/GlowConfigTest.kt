@@ -54,18 +54,18 @@ class GlowConfigTest {
     }
 
     @Test
-    fun `sweep color loop is closed to hide the seam`() {
+    fun `cyclic color loop is closed to hide the seam`() {
         // Open palette: first color appended. (한국어) 열린 팔레트엔 첫 색이 덧붙는다.
         val open = listOf(Color.Red, Color.Blue)
-        assertEquals(listOf(Color.Red, Color.Blue, Color.Red), closeSweepLoop(open))
+        assertEquals(listOf(Color.Red, Color.Blue, Color.Red), closeGradientLoop(open))
 
         // Already closed: unchanged. (한국어) 이미 닫힌 팔레트는 그대로.
         val closed = listOf(Color.Red, Color.Blue, Color.Red)
-        assertEquals(closed, closeSweepLoop(closed))
+        assertEquals(closed, closeGradientLoop(closed))
 
         // Single color: duplicated so the shader gets two stops.
         // (한국어) 단색은 셰이더가 요구하는 2개 스톱으로 복제.
-        assertEquals(listOf(Color.Red, Color.Red), closeSweepLoop(listOf(Color.Red)))
+        assertEquals(listOf(Color.Red, Color.Red), closeGradientLoop(listOf(Color.Red)))
     }
 
     @Test
