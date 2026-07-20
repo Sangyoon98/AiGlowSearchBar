@@ -64,7 +64,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "com.sangyoon"
                 artifactId = "aiglow"
-                version = "1.2.1" // Replace with actual version
+                version = "1.2.2" // Replace with actual version
 
                 pom {
                     licenses {

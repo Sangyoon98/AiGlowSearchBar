@@ -26,9 +26,10 @@ import androidx.compose.ui.semantics.Role
  * reacts to touch.
  *
  * Two independent glow layers: [glowStyle] draws the edge ring and
- * [backgroundGlowStyle] fills the surface with a rotating gradient that blooms
- * outward. The fill is painted *over* [backgroundColor] (when both are set) and
- * *under* the content. Both styles are forced onto the same resolved container
+ * [backgroundGlowStyle] carries the flowing perimeter colors toward one mixed center
+ * color across the surface and blooms outward. The fill is painted *over*
+ * [backgroundColor] (when both are set) and *under* the content. Both styles are
+ * forced onto the same resolved container
  * `shape` before drawing (see [AiGlowStyle.pinnedToShape]), so per-state or
  * ring-vs-background shape differences can never make the fill/ring diverge from the
  * `clip`/`background` outline used here.
@@ -45,8 +46,9 @@ import androidx.compose.ui.semantics.Role
  * (한국어) 어떤 콘텐츠든 글로우로 감싸는 범용 컨테이너입니다. 순수 Modifier와 달리
  * shape 클리핑, shape와 일치하는 배경, ripple 포함 클릭 처리까지 배선하며,
  * InteractionSource를 글로우와 공유해 누르면 glowStyle.pressed가 반응합니다.
- * [backgroundGlowStyle]은 표면을 회전 그라디언트로 채우고 바깥으로 번지는(bloom)
- * 배경 글로우로, [backgroundColor] 위·콘텐츠 아래에 칠해집니다. 두 스타일 모두 그리기
+ * [backgroundGlowStyle]은 흐르는 둘레 색을 표면 안쪽의 하나의 혼합 중심 색으로 모으고
+ * 바깥으로도 번지는 배경 글로우로, [backgroundColor] 위·콘텐츠 아래에 칠해집니다.
+ * 두 스타일 모두 그리기
  * 전에 동일한 컨테이너 shape으로 강제 고정되어([AiGlowStyle.pinnedToShape]) clip/배경에
  * 쓰는 외곽선과 어긋나지 않습니다. glow/배경/채움을 clip 바깥에 두어 halo·bloom은 밖으로
  * 번지고 콘텐츠·ripple은 안에 갇힙니다.
@@ -63,14 +65,16 @@ import androidx.compose.ui.semantics.Role
  * @param onClick Optional click action; `null` renders a non-interactive container.
  *   (한국어) null이면 클릭 없는 컨테이너.
  * @param backgroundColor Fill behind the content, clipped to the glow shape.
- *   [Color.Unspecified] draws no background — note the ring halo's inner half will
- *   then show through translucent content. (한국어) shape로 클리핑되는 배경색.
- *   Unspecified면 배경 없음(반투명 콘텐츠엔 halo 안쪽이 비칩니다).
+ *   [Color.Unspecified] draws no background — an explicitly inward/both halo may then
+ *   show through translucent content. (한국어) shape로 클리핑되는 배경색. Unspecified면
+ *   배경이 없으므로 inward/both halo가 반투명 콘텐츠를 통해 보일 수 있습니다.
  * @param contentAlignment Alignment of [content]. (한국어) 콘텐츠 정렬.
  * @param interactionSource Pass your own to observe/share interactions; `null` creates
  *   an internal one. (한국어) 직접 관찰하려면 전달, null이면 내부 생성.
  * @param backgroundGlowStyle Per-interaction-state surface glow; `null` (default)
- *   draws no fill. (한국어) 상태별 배경(표면) 글로우. null(기본)이면 채움 없음.
+ *   draws no fill. Its resolved shape should be single-contour and convex.
+ *   (한국어) 상태별 배경(표면) 글로우. null(기본)이면 채움이 없으며, 적용할 shape는 단일
+ *   외곽선의 볼록한 형태여야 합니다.
  * @param content Anything composable. (한국어) 임의 콘텐츠.
  */
 @Composable

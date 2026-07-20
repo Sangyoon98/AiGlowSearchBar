@@ -1,19 +1,28 @@
 package com.sangyoon.aiglow
 
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Verifies the arc-length contract used by the edge ring and halo renderers.
+ * Verifies the shared color and geometry contracts used by ring, halo, surface, and
+ * bloom renderers.
  *
  * Why pure JVM tests: outline flattening belongs to Android's cached draw layer, but
- * the regression was caused by mapping animation phase to polar angle instead of
- * distance. Exercising that mapping directly proves every side advances by the same
- * number of pixels without requiring screenshot timing or a device.
+ * the regressions live in pure perimeter-phase, center-mixing, and convexity logic.
+ * Exercising those mappings directly proves every side advances by the same number of
+ * pixels, the surface center stays phase-invariant, and custom inward geometry selects
+ * the safe fallback without requiring screenshot timing or a device.
  *
- * (한국어) 테두리 링과 halo 렌더러가 공유하는 둘레 길이 계약을 검증합니다. 외곽선 세분화는
- * Android draw 캐시에 맡기되, 회귀 원인이었던 phase→거리 매핑은 순수 함수로 직접 검사해
- * 기기나 스크린샷 타이밍 없이 모든 변이 같은 픽셀 거리만큼 이동함을 보장합니다.
+ * (한국어) ring·halo·surface·bloom 렌더러가 공유하는 색상·geometry 계약을 검증합니다.
+ * 외곽선 세분화는 Android draw 캐시에 맡기되, 둘레 phase·중심 혼합·볼록성 판별은 순수
+ * 함수로 검사해 모든 변의 이동 거리, 중심의 phase 불변성, 커스텀 안쪽 geometry의 안전한
+ * 폴백을 기기나 스크린샷 타이밍 없이 보장합니다.
  */
 class PerimeterGradientTest {
 
@@ -36,6 +45,7 @@ class PerimeterGradientTest {
     fun `full turns wrap without a palette seam`() {
         val distance = 517f
         val perimeter = 720f
+        val palette = closeGradientLoop(listOf(Color.Red, Color.Green, Color.Blue))
 
         assertEquals(
             perimeterGradientFraction(distance, perimeter, 0f),
@@ -46,6 +56,11 @@ class PerimeterGradientTest {
             perimeterGradientFraction(distance, perimeter, 0f),
             perimeterGradientFraction(distance, perimeter, 720f),
             1e-6f,
+        )
+        assertEquals(cyclicColorAt(palette, 0f), cyclicColorAt(palette, 1f))
+        assertEquals(
+            cyclicColorAt(palette, perimeterGradientFraction(distance, perimeter, 0f)),
+            cyclicColorAt(palette, perimeterGradientFraction(distance, perimeter, 360f)),
         )
     }
 
@@ -61,5 +76,77 @@ class PerimeterGradientTest {
     fun `degenerate perimeter resolves safely`() {
         assertEquals(0f, perimeterGradientFraction(10f, 0f, 90f), 0f)
         assertEquals(0f, perimeterGradientFraction(10f, Float.NaN, 90f), 0f)
+    }
+
+    @Test
+    fun `native blur outset follows the skia kernel support`() {
+        assertEquals(0f, nativeBlurMaskOutsetPx(0f), 0f)
+        assertEquals(4f, nativeBlurMaskOutsetPx(1f), 0f)
+        assertEquals(30f, nativeBlurMaskOutsetPx(16f), 0f)
+    }
+
+    @Test
+    fun `surface center mixes the cyclic palette without weighting its closing stop twice`() {
+        val open = listOf(Color.Red, Color.Blue)
+        val closed = listOf(Color.Red, Color.Blue, Color.Red)
+
+        assertEquals(0xFF800080.toInt(), mixedGradientColorArgb(open))
+        assertEquals(mixedGradientColorArgb(open), mixedGradientColorArgb(closed))
+        assertEquals(Color.Green.toArgb(), mixedGradientColorArgb(listOf(Color.Green)))
+    }
+
+    @Test
+    fun `surface center uses premultiplied colors for translucent palettes`() {
+        assertEquals(
+            0x800000FF.toInt(),
+            mixedGradientColorArgb(listOf(Color.Red.copy(alpha = 0f), Color.Blue)),
+        )
+    }
+
+    @Test
+    fun `surface phase changes its perimeter rows but never its mixed center row`() {
+        val palette = closeGradientLoop(listOf(Color.Red, Color.Blue))
+        val fractions = floatArrayOf(0f, 0.5f, 1f)
+        val centerColor = mixedGradientColorArgb(palette)
+        val target = IntArray(fractions.size * 3) { centerColor }
+        val centerRowStart = fractions.size * 2
+        val expectedCenterRow = IntArray(fractions.size) { centerColor }
+
+        applyPerimeterPhaseColors(palette, fractions, 2, target, 0f)
+        val zeroDegreeRows = target.copyOfRange(0, centerRowStart)
+        assertArrayEquals(expectedCenterRow, target.copyOfRange(centerRowStart, target.size))
+
+        applyPerimeterPhaseColors(palette, fractions, 2, target, 90f)
+        assertNotEquals(zeroDegreeRows.toList(), target.copyOfRange(0, centerRowStart).toList())
+        assertArrayEquals(expectedCenterRow, target.copyOfRange(centerRowStart, target.size))
+
+        applyPerimeterPhaseColors(palette, fractions, 2, target, 360f)
+        assertArrayEquals(zeroDegreeRows, target.copyOfRange(0, centerRowStart))
+        assertArrayEquals(expectedCenterRow, target.copyOfRange(centerRowStart, target.size))
+    }
+
+    @Test
+    fun `inward carrier distinguishes convex and concave contour geometry`() {
+        assertTrue(
+            polygonIsConvex(
+                floatArrayOf(
+                    0f, 0f,
+                    4f, 0f,
+                    4f, 2f,
+                    0f, 2f,
+                ),
+            ),
+        )
+        assertFalse(
+            polygonIsConvex(
+                floatArrayOf(
+                    0f, 0f,
+                    4f, 0f,
+                    2f, 1f,
+                    4f, 2f,
+                    0f, 2f,
+                ),
+            ),
+        )
     }
 }

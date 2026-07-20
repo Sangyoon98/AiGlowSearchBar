@@ -1,7 +1,6 @@
 package com.sangyoon.aiglow
 
 import android.graphics.BlurMaskFilter
-import android.graphics.Matrix
 import android.os.Build
 import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
@@ -23,18 +22,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.ClipOp
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.ShaderBrush
-import androidx.compose.ui.graphics.SweepGradientShader
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asAndroidPath
-import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
@@ -110,9 +102,12 @@ fun Modifier.aiGlow(
 }
 
 /**
- * Fills the component's own surface with a rotating sweep-gradient glow: the shape is
- * painted with the gradient and, when [GlowConfig.blurRadius] > 0, a blurred copy of
- * the fill blooms outward — the component itself appears to emit light.
+ * Fills the component's surface from its perimeter inward. Colors flow around the
+ * fixed outline using the same distance mapping as [aiGlow], then blend toward one
+ * phase-invariant palette mixture at the center. No angular color seam can therefore
+ * converge on the center point. When [GlowConfig.blurRadius] > 0, the perimeter glow
+ * also blooms outward past the edge. The surface fan is designed for single-contour
+ * convex shapes such as rounded rectangles, capsules, and circles.
  *
  * This is the *surface* counterpart of [aiGlow] (which draws an edge ring). The two
  * are independent modifiers so each can have its own colors, opacity, rotation speed
@@ -120,19 +115,23 @@ fun Modifier.aiGlow(
  * `Modifier.aiGlow(ringStyle).aiGlowBackground(fillStyle)` (ring stays on top because
  * the outer modifier wraps the inner one's drawing).
  *
- * Field semantics in fill mode: `colors` = surface gradient, `alpha` = surface
- * opacity, `blurRadius` = outward bloom distance (0.dp = crisp fill, no bloom),
- * `haloColors` = bloom palette override; `strokeWidth`/`haloStrokeWidth` are unused.
+ * Field semantics in fill mode: `colors` = perimeter-origin surface palette,
+ * `alpha` = surface opacity, `blurRadius` = outward bloom distance (0.dp = no bloom),
+ * `haloColors` = bloom palette override (falling back to `colors`);
+ * `strokeWidth`/`haloStrokeWidth`/`haloDirection` are unused.
  * The fill is drawn *behind* the host's content — an opaque container/background on
  * the host will cover it, so pair it with transparent container colors (the bundled
  * components handle this automatically).
  *
- * (한국어) 컴포넌트 표면 자체를 회전 그라디언트로 채우는 배경 글로우입니다. blurRadius가
- * 0보다 크면 채움의 블러 사본이 바깥으로 번져(bloom) 컴포넌트가 스스로 빛나는 것처럼
- * 보입니다. [aiGlow](테두리 링)와 독립된 Modifier라 색/투명도/회전 속도를 따로 설정할 수
- * 있고, 둘을 체이닝하면 함께 렌더링됩니다. fill 모드에서 strokeWidth/haloStrokeWidth는
- * 사용되지 않으며, haloColors는 bloom 색을 재정의합니다. 채움은 콘텐츠 *뒤*에 그려지므로
- * 호스트의 불투명 배경이 있으면 가려집니다(제공 컴포넌트들은 자동 처리).
+ * (한국어) 테두리를 따라 흐르는 색을 컴포넌트 안쪽으로 확장하는 배경 글로우입니다.
+ * 색은 중심에 가까워질수록 phase와 무관한 하나의 팔레트 혼합색으로 모이므로 중심점에
+ * 각도별 색 경계가 생기지 않습니다. blurRadius가 0보다 크면 haloColors(없으면 colors)가
+ * 같은 둘레 phase를 따라 가장자리 밖으로도 번집니다. surface fan은 둥근 사각형·캡슐·원
+ * 같은 단일 외곽선의 볼록한 shape를 대상으로 합니다. [aiGlow](테두리 링)와 독립된
+ * Modifier라 색/투명도/회전 속도를 따로 설정할 수 있고, 둘을 체이닝하면 함께
+ * 렌더링됩니다. fill 모드에서 strokeWidth/haloStrokeWidth/haloDirection은 사용되지
+ * 않습니다. 채움은 콘텐츠 *뒤*에 그려지므로 호스트의 불투명 배경이 있으면
+ * 가려집니다(제공 컴포넌트들은 자동 처리).
  *
  * @param glowConfig Visual parameters; customize via `copy()`. (한국어) copy()로 커스터마이징.
  */
@@ -245,7 +244,7 @@ internal fun rememberGlowAngle(
  * The pure draw layer for the edge ring. Creates no composition state.
  *
  * Why drawWithCache: [androidx.compose.ui.graphics.Outline] creation (Path work),
- * shader allocation and the halo [android.graphics.Paint] are too expensive to build
+ * mesh allocation and the halo [android.graphics.Paint] are too expensive to build
  * per frame; the cache scope keeps them alive until size/config change (official
  * Graphics Modifiers guidance).
  *
@@ -267,18 +266,14 @@ internal fun rememberGlowAngle(
  * from API 28 in hardware (Skia HWUI), and below API 28 we approximate the halo with
  * layered translucent strokes, so `blurRadius` is honored on every supported API level.
  *
- * Halo direction ([GlowConfig.haloDirection]): the halo stroke is centered on the
- * edge, so clipping selects which half survives. In pure Outward mode the pass is
- * drawn unclipped behind the content — a single draw has nothing to double-composite
- * with, and this preserves the pre-1.2.0 look where translucent containers let the
- * stroke's inner half shine through. The inward half is clipped to *inside* the
- * outline and drawn **above** the content, because an opaque container would
- * otherwise hide it completely. Only in Both mode is the outward half additionally
- * clipped to strictly outside ([ClipOp.Difference]) so the two passes never overlap —
- * without that, the edge region would receive the same light twice over translucent
- * containers.
+ * Halo direction ([GlowConfig.haloDirection]): outward and inward use separate color
+ * carriers and complementary clips. Convex outward contours use a one-sided carrier,
+ * while convex inward contours use a center-converging fan. Concave and multi-contour
+ * shapes fall back to symmetric contour ribbons so the path fill rule can select the
+ * correct side. The outward half stays behind the content; the inward half is drawn
+ * **above** it because an opaque container would otherwise hide the inner glow.
  *
- * (한국어) 테두리 링의 순수 draw 레이어입니다. drawWithCache로 Outline/셰이더/Paint를
+ * (한국어) 테두리 링의 순수 draw 레이어입니다. drawWithCache로 Outline/mesh/Paint를
  * 캐시하고, angle·alpha는 람다로 지연 읽기해 draw phase만 무효화합니다(애니메이션 중
  * recomposition 0회). 중심각 sweep은 직사각형의 긴 변/짧은 변에서 실제 이동 거리가
  * 달라지므로, 캐시한 bitmap mesh에 누적 둘레 길이 기준 색상 phase를 매핑하고 원본 path를
@@ -286,12 +281,11 @@ internal fun rememberGlowAngle(
  * 같은 둘레 비율로 흐르며 캔버스와 외곽선은 회전시키지 않습니다.
  * Modifier.blur()는 콘텐츠 전체를 흐리게 하고 API 31 미만에서 무시되므로
  * BlurMaskFilter(API 28+) + 다층 스트로크 폴백(API 26~27)으로 halo를 그립니다.
- * halo 방향: 스트로크가 가장자리 중앙에 걸쳐 있으므로 클리핑으로 살릴 절반을 고릅니다.
- * 순수 Outward는 단일 패스라 이중 합성이 없어 클리핑 없이 콘텐츠 뒤에 그려 이전 버전의
- * 룩(반투명 컨테이너에 안쪽 절반이 비침)을 보존하고, 안쪽 절반은 외곽선 안으로 클리핑해
- * 콘텐츠 **위**에 그립니다(불투명 컨테이너가 가리지 않도록). Both 모드에서만 바깥 절반을
- * 외곽선 밖으로 추가 클리핑해 두 패스가 절대 겹치지 않게 합니다 — 겹치면 반투명 컨테이너
- * 위에서 가장자리가 같은 빛을 두 번 받게 됩니다.
+ * halo의 바깥쪽과 안쪽은 별도 색상 carrier와 상보적인 clip을 사용합니다. 볼록한 바깥쪽
+ * contour에는 단방향 carrier를, 볼록한 안쪽 contour에는 중심으로 모이는 fan을 적용합니다.
+ * 오목하거나 contour가 여러 개인 커스텀 shape는 path fill rule이 올바른 면을 고를 수 있도록
+ * 대칭 contour ribbon으로 폴백합니다. 바깥쪽은 콘텐츠 뒤에 두고, 안쪽은 불투명 컨테이너에
+ * 가려지지 않도록 콘텐츠 **위**에 그립니다.
  */
 internal fun Modifier.glowDraw(
     config: GlowConfig,
@@ -362,23 +356,45 @@ internal fun Modifier.glowDraw(
         emptyList()
     }
     val maxHaloWidthPx = haloWidthPx + if (useNativeBlur) 0f else blurPx * 2f
-    val haloGradient = if (haloMaskPaints.isNotEmpty()) {
-        PerimeterGradient(
+    val haloOutsetPx = maxHaloWidthPx / 2f +
+        if (useNativeBlur) nativeBlurMaskOutsetPx(blurPx) else 0f
+    val paddedHaloOutsetPx = haloOutsetPx + 4f
+    val outwardHaloGradient = if (haloMaskPaints.isNotEmpty() && bleedsOutward) {
+        PerimeterGradient.outward(
             nativeOutlinePath,
             config.resolvedHaloColors,
-            carrierWidthPx = maxHaloWidthPx + blurPx * 8f + 8f,
+            carrierOutsetPx = paddedHaloOutsetPx,
         )
     } else {
         null
     }
-    val haloLayer = haloGradient?.let { gradient ->
+    val inwardHaloGradient = if (haloMaskPaints.isNotEmpty() && bleedsInward) {
+        PerimeterGradient.inward(
+            nativeOutlinePath,
+            config.resolvedHaloColors,
+            carrierInsetPx = paddedHaloOutsetPx,
+        )
+    } else {
+        null
+    }
+    val outwardHaloLayer = outwardHaloGradient?.let { gradient ->
         PerimeterMaskLayer(
             gradient = gradient,
             path = nativeOutlinePath,
             maskPaints = haloMaskPaints,
             width = size.width,
             height = size.height,
-            outsetPx = maxHaloWidthPx / 2f + blurPx * 4f + 4f,
+            outsetPx = paddedHaloOutsetPx,
+        )
+    }
+    val inwardHaloLayer = inwardHaloGradient?.let { gradient ->
+        PerimeterMaskLayer(
+            gradient = gradient,
+            path = nativeOutlinePath,
+            maskPaints = haloMaskPaints,
+            width = size.width,
+            height = size.height,
+            outsetPx = paddedHaloOutsetPx,
         )
     }
 
@@ -388,21 +404,16 @@ internal fun Modifier.glowDraw(
         if (alpha > 0f) {
             val angle = angleProvider()
             ringGradient.applyPhase(angle)
-            haloGradient?.applyPhase(angle)
+            outwardHaloGradient?.applyPhase(angle)
+            inwardHaloGradient?.applyPhase(angle)
 
-            // 1) Outward halo, behind the content. Clipped to strictly outside the
-            // outline ONLY when an inward pass will also run (Both) — that is the
-            // only case where an unclipped draw would double-composite the edge
-            // region; pure Outward keeps the classic unclipped single pass.
-            // (한국어) 바깥 halo — 안쪽 패스가 함께 도는 Both 모드에서만 외곽선 밖으로
-            // 클리핑(이중 합성 방지). 순수 Outward는 기존과 동일한 무클리핑 단일 패스.
-            if (haloLayer != null && bleedsOutward) {
-                if (bleedsInward) {
-                    clipPath(outlinePath, clipOp = ClipOp.Difference) {
-                        drawPerimeterLayer(haloLayer, alpha)
-                    }
-                } else {
-                    drawPerimeterLayer(haloLayer, alpha)
+            // 1) Outward halo, behind the content. The exterior clip selects only the
+            // visible side of either the optimized one-sided or fallback ribbon.
+            // (한국어) 바깥 halo. exterior clip으로 최적화된 단방향 carrier나 폴백
+            // ribbon에서 실제로 보여야 할 바깥쪽만 선택합니다.
+            if (outwardHaloLayer != null) {
+                clipPath(outlinePath, clipOp = ClipOp.Difference) {
+                    drawPerimeterLayer(outwardHaloLayer, alpha)
                 }
             }
         }
@@ -414,9 +425,9 @@ internal fun Modifier.glowDraw(
             // 3) Inward half of the halo, above the content — an opaque container
             // would completely hide it if drawn behind. (한국어) 안쪽 절반 halo —
             // 뒤에 그리면 불투명 컨테이너에 가려지므로 콘텐츠 위에 그린다.
-            if (haloLayer != null && bleedsInward) {
+            if (inwardHaloLayer != null) {
                 clipPath(outlinePath, clipOp = ClipOp.Intersect) {
-                    drawPerimeterLayer(haloLayer, alpha)
+                    drawPerimeterLayer(inwardHaloLayer, alpha)
                 }
             }
 
@@ -440,100 +451,113 @@ private fun DrawScope.drawPerimeterLayer(layer: PerimeterMaskLayer, alpha: Float
 }
 
 /**
- * The pure draw layer for the surface fill. Same caching/deferral discipline as
- * [glowDraw], but paints the shape's interior instead of its edge.
+ * The pure draw layer for a perimeter-origin surface fill.
  *
- * Rendering: (1) when blurRadius > 0, a blurred *filled* copy of the shape is drawn,
- * clipped to strictly *outside* the outline; (2) the crisp gradient fill covers the
- * interior. Everything is drawn with `onDrawBehind` because a surface belongs
- * strictly under the content.
+ * Rendering: (1) when `blurRadius > 0`, a blurred path mask carries the normalized
+ * perimeter colors strictly outside the outline; (2) a cached triangle-fan mesh puts
+ * the same colors on the boundary and one phase-invariant mixed palette color on
+ * every center vertex. GPU interpolation makes the colors originate at the edge and
+ * merge continuously at the center. The fan targets single-contour convex shapes.
  *
- * Why the bloom pass is clipped to the outline's exterior rather than relying on the
- * crisp fill to "cover" its interior half: both passes use standard SrcOver alpha
- * blending. At `alpha == 1` the crisp fill fully replaces whatever the bloom painted
- * underneath, but at `alpha < 1` (the common case — [AiGlowDefaults.interactiveStyle]'s
- * idle state alone is already below 1) the deep interior — beyond `blurRadius` from
- * the edge, where the blur mask has no effect — would get painted *twice* at the same
- * alpha, compositing to `1 - (1 - alpha)^2`: visibly more opaque than the edges, where
- * the mask fades toward zero. Clipping the bloom to the exterior means it can never
- * overlap the region the crisp fill paints, so the result is alpha-correct regardless
- * of `alpha`, `blurRadius`, or shape size.
+ * Why the bloom is clipped outside: at `alpha < 1`, overlapping bloom and surface
+ * passes would composite to `1 - (1 - alpha)^2` and make the interior too opaque.
+ * Keeping them disjoint applies global alpha exactly once to either region.
  *
- * (한국어) 표면 채움의 순수 draw 레이어. [glowDraw]와 동일한 캐시/지연 읽기 규율을
- * 따르되 가장자리 대신 내부를 칠합니다. bloom 패스를 외곽선 바깥쪽으로만 클리핑하는
- * 이유: 두 패스 모두 기본 SrcOver 블렌딩을 쓰므로, alpha==1이면 크리스프 채움이 아래
- * bloom을 완전히 대체하지만 alpha<1(흔한 기본값 — interactiveStyle의 idle조차 이미 1
- * 미만)에서는 blurRadius보다 안쪽 깊은 영역이 같은 alpha로 두 번 칠해져
- * 1-(1-alpha)^2로 합성되어 가장자리보다 중심부가 눈에 띄게 진해지는 오파시티 밴딩이
- * 생깁니다. bloom을 외곽선 바깥으로 클리핑하면 크리스프 채움 영역과 절대 겹치지 않아
- * alpha·blurRadius·shape 크기와 무관하게 항상 정확합니다.
+ * (한국어) 테두리 기점 surface fill의 순수 draw 레이어입니다. `blurRadius > 0`이면
+ * 정규화된 둘레 색을 블러 path mask로 외곽선 밖에만 그리고, 내부 triangle-fan mesh는
+ * 경계에 같은 둘레 색을, 모든 중심 꼭짓점에 phase 불변 혼합색을 둡니다. GPU 보간으로
+ * 색이 가장자리에서 시작해 중심에서 연속적으로 합쳐집니다. fan은 단일 외곽선의 볼록한
+ * shape를 대상으로 합니다. bloom과 surface를 분리하는 이유는 `alpha < 1`일 때 두 패스가
+ * 겹치면 `1-(1-alpha)^2`만큼 더 진해지기 때문입니다.
  */
 internal fun Modifier.glowFillDraw(
     config: GlowConfig,
     angleProvider: () -> Float,
     alphaProvider: () -> Float,
 ): Modifier = drawWithCache {
-    val fillColors = closeGradientLoop(config.colors)
-    val bloomColors = closeGradientLoop(config.resolvedHaloColors)
     val outline = config.shape.createOutline(size, layoutDirection, this)
-    val center = size.center
     val outlinePath = Path().apply { addOutline(outline) }
+    val nativeOutlinePath = outlinePath.asAndroidPath()
 
-    val fillShader = SweepGradientShader(center = center, colors = fillColors)
-    val fillBrush = ShaderBrush(fillShader)
+    val fillGradient = PerimeterGradient.surface(nativeOutlinePath, config.colors)
+    val fillMaskPaint = android.graphics.Paint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.WHITE
+        style = android.graphics.Paint.Style.FILL
+    }
+    val fillLayer = PerimeterMaskLayer(
+        gradient = fillGradient,
+        path = nativeOutlinePath,
+        maskPaints = listOf(fillMaskPaint),
+        width = size.width,
+        height = size.height,
+        outsetPx = 2f,
+    )
 
     val blurPx = config.blurRadius.toPx()
-    val bloomShader = SweepGradientShader(center = center, colors = bloomColors)
-    val bloomBrush = ShaderBrush(bloomShader)
-    val shaderMatrix = Matrix()
-
     val useNativeBlur = blurPx > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P
-    val nativeBloomPath: android.graphics.Path? = if (useNativeBlur) outlinePath.asAndroidPath() else null
-    val nativeBloomPaint: android.graphics.Paint? = if (useNativeBlur) {
-        android.graphics.Paint().apply {
+    val bloomMaskPaints: List<android.graphics.Paint> = if (useNativeBlur) {
+        listOf(android.graphics.Paint().apply {
             isAntiAlias = true
+            color = android.graphics.Color.WHITE
             style = android.graphics.Paint.Style.FILL
-            shader = bloomShader
             maskFilter = BlurMaskFilter(blurPx, BlurMaskFilter.Blur.NORMAL)
-        }
-    } else {
-        null
-    }
-    // API 26–27 bloom approximation: translucent strokes expanding outward from the
-    // shape edge. (한국어) 26~27 bloom 근사: 가장자리에서 바깥으로 퍼지는 반투명 스트로크.
-    val fallbackBloomLayers: List<Pair<Stroke, Float>> = if (blurPx > 0f && !useNativeBlur) {
+        })
+    } else if (blurPx > 0f) {
         val layerCount = 6
         List(layerCount) { index ->
             val fraction = (index + 1) / layerCount.toFloat()
-            Stroke(width = blurPx * 2f * fraction) to ((1f - fraction) * 0.28f + 0.04f)
+            android.graphics.Paint().apply {
+                isAntiAlias = true
+                color = android.graphics.Color.WHITE
+                alpha = (((1f - fraction) * 0.28f + 0.04f) * 255f).roundToInt()
+                style = android.graphics.Paint.Style.STROKE
+                strokeWidth = blurPx * 2f * fraction
+                strokeCap = android.graphics.Paint.Cap.BUTT
+                strokeJoin = android.graphics.Paint.Join.ROUND
+            }
         }
     } else {
         emptyList()
+    }
+    val bloomOutsetPx = when {
+        useNativeBlur -> nativeBlurMaskOutsetPx(blurPx)
+        blurPx > 0f -> blurPx
+        else -> 0f
+    } + 4f
+    val bloomGradient = if (bloomMaskPaints.isNotEmpty()) {
+        PerimeterGradient.outward(
+            nativeOutlinePath,
+            config.resolvedHaloColors,
+            carrierOutsetPx = bloomOutsetPx,
+        )
+    } else {
+        null
+    }
+    val bloomLayer = bloomGradient?.let { gradient ->
+        PerimeterMaskLayer(
+            gradient = gradient,
+            path = nativeOutlinePath,
+            maskPaints = bloomMaskPaints,
+            width = size.width,
+            height = size.height,
+            outsetPx = bloomOutsetPx,
+        )
     }
 
     onDrawBehind {
         val alpha = alphaProvider().coerceIn(0f, 1f)
         if (alpha <= 0f) return@onDrawBehind
 
-        shaderMatrix.setRotate(angleProvider(), center.x, center.y)
-        fillShader.setLocalMatrix(shaderMatrix)
-        bloomShader.setLocalMatrix(shaderMatrix)
+        val angle = angleProvider()
+        fillGradient.applyPhase(angle)
+        bloomGradient?.applyPhase(angle)
 
-        // 1) Outward bloom, clipped to strictly outside the outline so it never
-        // double-composites with the crisp fill below. (한국어) 외곽선 바깥으로만
-        // 클리핑된 bloom — 아래 크리스프 채움과 절대 겹치지 않는다.
-        clipPath(outlinePath, clipOp = ClipOp.Difference) {
-            if (nativeBloomPaint != null && nativeBloomPath != null) {
-                nativeBloomPaint.alpha = (alpha * 255f).roundToInt()
-                drawIntoCanvas { canvas -> canvas.nativeCanvas.drawPath(nativeBloomPath, nativeBloomPaint) }
-            } else {
-                fallbackBloomLayers.forEach { (stroke, layerAlpha) ->
-                    drawOutline(outline = outline, brush = bloomBrush, alpha = alpha * layerAlpha, style = stroke)
-                }
+        if (bloomLayer != null) {
+            clipPath(outlinePath, clipOp = ClipOp.Difference) {
+                drawPerimeterLayer(bloomLayer, alpha)
             }
         }
-
-        // 2) Crisp gradient surface. (한국어) 선명한 그라디언트 표면.
-        drawOutline(outline = outline, brush = fillBrush, alpha = alpha, style = Fill)
+        drawPerimeterLayer(fillLayer, alpha)
     }
 }
