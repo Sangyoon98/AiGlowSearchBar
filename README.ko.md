@@ -16,7 +16,7 @@
   <img src="docs/images/hero.svg" alt="AiGlow — Jetpack Compose용 회전 AI 그라디언트 글로우" width="840"/>
 </p>
 
-UI를 회전하는 AI 스타일 그라디언트 글로우로 감싸는 순수 Jetpack Compose 라이브러리입니다. 콘텐츠 뒤에는 부드럽게 번지는 halo를, 가장자리에는 선명한 sweep-gradient 링을 그립니다.
+UI를 회전하는 AI 스타일 그라디언트 글로우로 감싸는 순수 Jetpack Compose 라이브러리입니다. 콘텐츠 뒤에는 부드럽게 번지는 halo를, 가장자리에는 선명한 둘레 그라디언트 링을 그립니다.
 
 - **전역 상태 제로** — 모든 글로우 컴포넌트는 구조적으로 독립 애니메이션됩니다.
 - **애니메이션 중 recomposition 제로** — 회전 각도는 draw phase에서만 읽습니다.
@@ -31,7 +31,7 @@ UI를 회전하는 AI 스타일 그라디언트 글로우로 감싸는 순수 Je
 | `AiGlowFloatingActionButton` | 누르는 동안 밝아지는 글로우를 두른 Material 3 FAB. |
 | `AiGlowBox` | *어떤* 콘텐츠든 글로우로 감싸는 범용 컨테이너. 클릭(ripple 포함)도 선택적으로 지원합니다. |
 | `Modifier.aiGlow(...)` | 위 컴포넌트들이 공유하는 테두리 링 Modifier — 원하는 컴포저블에 직접 테두리 글로우를 붙일 수 있습니다. |
-| `Modifier.aiGlowBackground(...)` | 표면 버전: 컴포넌트 자체를 회전 그라디언트로 채우고 바깥으로 번지게(bloom) 합니다. |
+| `Modifier.aiGlowBackground(...)` | 표면 버전: 테두리를 따라 흐르는 색을 안쪽으로 번지게 하고, 중심에서는 팔레트를 섞은 하나의 색으로 모읍니다. 가장자리 밖으로 퍼지는 bloom도 함께 그립니다. |
 
 모든 컴포넌트는 독립적인 스타일 파라미터 두 개를 받습니다 — `glowStyle`(테두리 링)과 `backgroundGlowStyle`(표면 채움). 각각 색/투명도/회전 속도를 따로 가지며, 단독으로도 함께도 쓸 수 있습니다.
 
@@ -79,11 +79,11 @@ repositories {
 
 // 사용하는 모듈의 build.gradle.kts
 dependencies {
-    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.2.1'
+    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.2.2'
 }
 ```
 
-> 좌표 형식 참고: 이 저장소는 Gradle 모듈이 여러 개(`:app`, `:aiglow`)이므로, JitPack은 단일 모듈용 `com.github.<user>:<repo>:<tag>` 대신 `com.github.<user>.<repo>:<module>:<tag>` 형식(user/repo를 점으로 연결)을 요구합니다. `v1.2.1`은 원하는 릴리스 태그로 바꾸세요.
+> 좌표 형식 참고: 이 저장소는 Gradle 모듈이 여러 개(`:app`, `:aiglow`)이므로, JitPack은 단일 모듈용 `com.github.<user>:<repo>:<tag>` 대신 `com.github.<user>.<repo>:<module>:<tag>` 형식(user/repo를 점으로 연결)을 요구합니다. `v1.2.2`는 원하는 릴리스 태그로 바꾸세요.
 
 > **배포 절차:** [PUBLISHING.md](PUBLISHING.md) 참조.
 
@@ -147,11 +147,11 @@ val config = GlowConfig(
 
 | 파라미터 | 타입 | 기본값 | 의미 |
 |---|---|---|---|
-| `colors` | `List<Color>` | `AiGlowDefaults.GeminiColors` | 링의 sweep 그라디언트 색 |
+| `colors` | `List<Color>` | `AiGlowDefaults.GeminiColors` | 둘레 그라디언트 팔레트 |
 | `strokeWidth` | `Dp` | `2.dp` | 링 두께 |
 | `blurRadius` | `Dp` | `16.dp` | halo 번짐 반경. `0.dp`면 halo 없음 |
 | `rotationDuration` | `Int` (ms) | `4000` | 한 바퀴 도는 시간 |
-| `shape` | `Shape` | `RoundedCornerShape(28.dp)` | 글로우와 호스트 컴포넌트가 **공유**하는 외곽선 — 임의 radius, 커스텀 `Shape` 모두 가능 |
+| `shape` | `Shape` | `RoundedCornerShape(28.dp)` | 글로우와 호스트 컴포넌트가 **공유**하는 외곽선. 테두리 글로우는 커스텀 shape도 가능하고, 배경 fan은 단일 외곽선의 볼록한 shape를 대상으로 함 |
 | `haloColors` | `List<Color>?` | `null` (= `colors`) | halo/셰도우 전용 팔레트 |
 | `haloStrokeWidth` | `Dp?` | `null` (= `strokeWidth * 2`) | halo 링 두께 |
 | `alpha` | `Float` | `1f` | 글로우 전체 불투명도 |
@@ -198,7 +198,7 @@ AiGlowSearchBar(query, onQueryChange, glowStyle = custom)
 
 ## 배경 글로우 (표면 채움)
 
-테두리 링과 별개로 컴포넌트의 *표면 자체*가 빛날 수 있습니다: `backgroundGlowStyle`은 shape 내부를 회전하는 sweep 그라디언트로 채우고, `blurRadius > 0`이면 가장자리 밖으로 번집니다(bloom). 링과 완전히 독립적이라 전용 팔레트·투명도·회전 속도·easing을 가지며, 둘을 동시에 켤 수도 있습니다:
+테두리 링과 별개로 컴포넌트의 *표면 자체*도 빛낼 수 있습니다. `backgroundGlowStyle`은 외곽선을 따라 색을 움직이고 안쪽으로 확장한 뒤, 중심에 가까워질수록 phase와 무관한 하나의 팔레트 혼합색으로 모읍니다. 기존 sweep처럼 중심점에 색 경계가 몰리지 않습니다. `blurRadius > 0`이면 `haloColors`(없으면 `colors`) 팔레트가 같은 둘레 phase를 따라 가장자리 밖으로도 번집니다. 링과 완전히 독립적이라 팔레트·투명도·회전 속도·easing을 따로 설정할 수 있고, 둘을 동시에 켤 수도 있습니다:
 
 ```kotlin
 AiGlowSearchBar(
@@ -218,15 +218,15 @@ AiGlowSearchBar(
 
 원본 Modifier로 아무 컴포저블의 표면이나 빛나게 할 수도 있습니다: `Modifier.aiGlowBackground(config)` — `aiGlow` 뒤에 체이닝하면 함께 렌더링됩니다(`Modifier.aiGlow(ring).aiGlowBackground(fill)`).
 
-fill 모드에서의 `GlowConfig` 필드 의미: `colors` = 표면 그라디언트, `alpha` = 표면 불투명도, `blurRadius` = bloom 거리, `haloColors` = bloom 팔레트 재정의. `strokeWidth`/`haloStrokeWidth`/`haloDirection`은 사용되지 않습니다(채움의 bloom은 항상 바깥 방향). 채움은 콘텐츠 *뒤*에 그려지므로 호스트 컨테이너가 투명해야 하는데, 제공되는 컴포넌트들은 `backgroundGlowStyle` 지정 시 자동으로 투명 기본값으로 전환됩니다(FAB은 elevation 그림자도 제거).
+fill 모드에서의 `GlowConfig` 필드 의미: `colors` = 테두리에서 시작해 하나의 혼합 중심 색으로 모이는 표면 팔레트, `alpha` = 표면 불투명도, `blurRadius` = bloom 거리, `haloColors` = bloom 팔레트 재정의. `strokeWidth`/`haloStrokeWidth`/`haloDirection`은 사용되지 않습니다(채움의 bloom은 항상 바깥 방향). triangle-fan 채움은 둥근 사각형·캡슐·원처럼 단일 외곽선의 볼록한 shape를 대상으로 합니다. 채움은 콘텐츠 *뒤*에 그려지므로 호스트 컨테이너가 투명해야 하는데, 제공되는 컴포넌트들은 `backgroundGlowStyle` 지정 시 자동으로 투명 기본값으로 전환됩니다(FAB은 elevation 그림자도 제거).
 
 ## 동작 원리 (그리고 빠른 이유)
 
 - **`GlowConfig`는 `@Immutable` data class** — 동일한 config가 전달되는 한 recomposition을 건너뛸 수 있게 하는 stability 계약입니다 ([Compose stability 가이드](https://developer.android.com/develop/ui/compose/performance/stability)).
 - **회전 상태는 호출 지점별 composition에 격리** (`rememberInfiniteTransition`) — 글로우 컴포넌트를 몇 개를 배치해도 서로 간섭할 수 없습니다. 전역/`companion object` 상태가 어디에도 없습니다.
 - **각도는 draw phase에서만 읽으므로** 애니메이션은 *그리기만* 무효화합니다: 60~120fps 내내 composition/layout 0회 ([Compose phases](https://developer.android.com/develop/ui/compose/phases), [읽기 지연](https://developer.android.com/develop/ui/compose/performance/bestpractices)).
-- **비싼 객체(외곽선 Path, 셰이더, Paint)는 `drawWithCache`로 캐시**되어 크기/설정이 바뀔 때만 재생성됩니다 ([graphics modifiers](https://developer.android.com/develop/ui/compose/graphics/draw/modifiers)).
-- **그라디언트는 캔버스가 아닌 셰이더의 local matrix로 회전** — 모양은 기울지 않고 색만 흐릅니다.
+- **비싼 객체(외곽선 Path, mesh, Paint)는 `drawWithCache`로 캐시**되어 크기/설정이 바뀔 때만 재생성됩니다 ([graphics modifiers](https://developer.android.com/develop/ui/compose/graphics/draw/modifiers)).
+- **그라디언트 phase는 정규화된 둘레 거리를 따라 이동**하고 외곽선과 캔버스는 고정됩니다. 배경은 테두리 색을 하나의 혼합 중심 색으로 보간합니다.
 - **halo는 `Modifier.blur()`가 아닌 `BlurMaskFilter` 사용** — `Modifier.blur()`는 콘텐츠까지 흐리게 하고 API 31 미만에서 무시됩니다. 마스크 필터는 글로우 스트로크만 흐리며 API 28부터 하드웨어 가속되고, API 26~27에서는 다층 스트로크 근사로 그려 `blurRadius`가 모든 기기에서 동작합니다.
 
 ## 데모 앱 — 인터랙티브 플레이그라운드

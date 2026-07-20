@@ -63,8 +63,8 @@ class GlowConfigTest {
         val closed = listOf(Color.Red, Color.Blue, Color.Red)
         assertEquals(closed, closeGradientLoop(closed))
 
-        // Single color: duplicated so the shader gets two stops.
-        // (한국어) 단색은 셰이더가 요구하는 2개 스톱으로 복제.
+        // Single color: duplicated so cyclic mesh interpolation still has one segment.
+        // (한국어) 단색도 순환 mesh 보간 구간이 하나 생기도록 두 번 둔다.
         assertEquals(listOf(Color.Red, Color.Red), closeGradientLoop(listOf(Color.Red)))
     }
 

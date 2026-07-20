@@ -69,12 +69,13 @@ enum class HaloDirection {
  * "생성 후 불변"을 보장해 recomposition skip 최적화를 가능하게 합니다.
  * var Builder 대신 copy() 기반 커스터마이징을 사용해 이 계약을 유지합니다.
  *
- * @property colors Colors of the rotating sweep gradient ring. Treat the list as
- *   immutable (mutating it after construction violates the `@Immutable` contract).
- *   If the first and last colors differ, the first color is appended at draw time to
- *   hide the sweep seam.
- *   (한국어) 회전 그라디언트 링의 색 목록. 불변으로 취급해야 하며, 첫/끝 색이 다르면
- *   그리기 시점에 첫 색이 덧붙어 이음새를 없앱니다.
+ * @property colors Cyclic perimeter palette used by the ring, or by the surface edge
+ *   in [aiGlowBackground]. Treat the list as immutable (mutating it after construction
+ *   violates the `@Immutable` contract). If the first and last colors differ, the
+ *   first color is appended at draw time to close the loop.
+ *   (한국어) 링과 [aiGlowBackground]의 표면 테두리에 쓰는 순환 둘레 팔레트입니다.
+ *   불변으로 취급해야 하며, 첫/끝 색이 다르면 그리기 시점에 첫 색을 덧붙여 순환을
+ *   닫습니다.
  * @property strokeWidth Thickness of the crisp gradient ring, in [Dp] for density
  *   independence. (한국어) 선명한 링의 두께(Dp).
  * @property blurRadius How far the soft halo bleeds outward. `0.dp` disables the halo.
@@ -86,10 +87,12 @@ enum class HaloDirection {
  * @property rotationDuration Time in milliseconds for one full 360° rotation of the
  *   gradient. (한국어) 그라디언트가 한 바퀴 도는 시간(ms).
  * @property shape Outline shared by the glow and the host component. This is the
- *   standard Compose [Shape] interface — pass `RoundedCornerShape(radius)` for any
- *   corner radius from a sharp rectangle (0.dp) to a capsule, or any custom [Shape].
- *   (한국어) 글로우와 컴포넌트가 공유하는 외곽선. 표준 Shape 인터페이스라
- *   RoundedCornerShape(radius)로 사각형~캡슐을 자유롭게 지정할 수 있습니다.
+ *   standard Compose [Shape] interface — [aiGlow] accepts custom shapes, while the
+ *   background's center-converging fan targets single-contour convex shapes such as
+ *   rounded rectangles, capsules, and circles.
+ *   (한국어) 글로우와 컴포넌트가 공유하는 표준 Compose Shape입니다. [aiGlow]는 커스텀
+ *   shape도 받을 수 있고, 배경의 중심 수렴 fan은 둥근 사각형·캡슐·원처럼 단일
+ *   외곽선의 볼록한 shape를 대상으로 합니다.
  * @property haloColors Optional separate palette for the blurred halo ("shadow color").
  *   `null` falls back to [colors]. (한국어) halo(셰도우) 전용 색. null이면 colors 사용.
  * @property haloStrokeWidth Optional thickness of the blurred halo ring. `null` falls

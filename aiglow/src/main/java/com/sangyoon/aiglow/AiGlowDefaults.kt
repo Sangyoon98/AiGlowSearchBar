@@ -79,10 +79,10 @@ object AiGlowDefaults {
 
     /**
      * Text field colors tuned for glow: transparent borders (the gradient ring *is*
-     * the border) and opaque containers (so the halo reads as an outer light only).
+     * the border) and an opaque Material surface inside the outward-only halo.
      *
-     * (한국어) 글로우 전용 텍스트필드 색: 기본 테두리는 투명(그라디언트 링이 테두리 역할),
-     * 컨테이너는 불투명(halo의 안쪽 절반을 가려 바깥으로만 빛나게).
+     * (한국어) 글로우 전용 텍스트필드 색입니다. 그라디언트 링이 테두리 역할을 하므로 기본
+     * 테두리는 투명하게 두고, 바깥쪽 halo 안에는 불투명한 Material 표면을 유지합니다.
      */
     @Composable
     fun searchBarColors(): TextFieldColors = OutlinedTextFieldDefaults.colors(

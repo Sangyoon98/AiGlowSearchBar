@@ -26,10 +26,11 @@ import androidx.compose.ui.text.input.ImeAction
  *
  * Two independent glow layers are available: [glowStyle] draws the edge ring
  * (halo + crisp gradient border) and [backgroundGlowStyle] fills the surface itself
- * with a rotating gradient that blooms outward. Use either alone or both together —
- * each has its own colors/opacity/rotation speed. When a background glow is set, the
- * default [colors] switch to transparent containers so the fill is visible through
- * the text field. Both styles are forced onto the same resolved container `shape`
+ * from the flowing perimeter colors toward one mixed center color, then blooms
+ * outward. Use either alone or both together — each has its own
+ * colors/opacity/rotation speed. When a background glow is set, the default [colors]
+ * switch to transparent containers so the fill is visible through the text field.
+ * Both styles are forced onto the same resolved container `shape`
  * before drawing (see [AiGlowStyle.pinnedToShape]), so per-state or ring-vs-background
  * shape differences can never make the glow diverge from the container outline.
  *
@@ -48,9 +49,10 @@ import androidx.compose.ui.text.input.ImeAction
  * (한국어) Material OutlinedTextField 기반의 글로우 검색 바입니다. 커서/IME/접근성 등
  * Material 동작을 그대로 상속하고, 상태 호이스팅으로 stateless를 유지합니다.
  * 글로우 레이어는 두 가지가 독립적으로 제공됩니다: [glowStyle]은 테두리 링,
- * [backgroundGlowStyle]은 표면 자체를 채우고 바깥으로 번지는 배경 글로우 — 각각
- * 단독으로도, 함께도 쓸 수 있고 색/투명도/회전 속도를 따로 가집니다. 배경 글로우 지정 시
- * 기본 [colors]가 투명 컨테이너로 전환되어 채움이 비쳐 보입니다. 두 스타일 모두 그리기
+ * [backgroundGlowStyle]은 흐르는 둘레 색을 표면 안쪽의 하나의 혼합 중심 색으로 모은 뒤
+ * 바깥으로도 번지는 배경 글로우입니다. 각각 단독으로도, 함께도 쓸 수 있고
+ * 색/투명도/회전 속도를 따로 가집니다. 배경 글로우 지정 시 기본 [colors]가 투명
+ * 컨테이너로 전환되어 채움이 비쳐 보입니다. 두 스타일 모두 그리기
  * 전에 동일한 컨테이너 shape으로 강제 고정되어([AiGlowStyle.pinnedToShape]) 상태별/
  * 링-배경 간 shape 차이로 글로우가 컨테이너 외곽선과 어긋나는 일이 없습니다.
  * 같은 InteractionSource를 공유해 포커스/눌림에 글로우가 반응합니다.
@@ -83,7 +85,9 @@ import androidx.compose.ui.text.input.ImeAction
  * @param interactionSource Pass your own to observe/share interactions; `null` creates
  *   an internal one. (한국어) 직접 관찰하려면 전달, null이면 내부 생성.
  * @param backgroundGlowStyle Per-interaction-state surface glow; `null` (default)
- *   draws no fill. (한국어) 상태별 배경(표면) 글로우. null(기본)이면 채움 없음.
+ *   draws no fill. Its resolved shape should be single-contour and convex.
+ *   (한국어) 상태별 배경(표면) 글로우. null(기본)이면 채움이 없으며, 적용할 shape는 단일
+ *   외곽선의 볼록한 형태여야 합니다.
  */
 @Composable
 fun AiGlowSearchBar(

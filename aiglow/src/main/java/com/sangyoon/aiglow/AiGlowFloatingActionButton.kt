@@ -21,8 +21,9 @@ import androidx.compose.ui.unit.dp
  * lights up while the button is held.
  *
  * Two independent glow layers: [glowStyle] draws the edge ring, [backgroundGlowStyle]
- * fills the button surface with a rotating gradient that blooms outward. When a
- * background glow is set *and* [containerColor] is left at its default, the container
+ * moves the perimeter colors into one mixed center color across the button surface
+ * and blooms outward. When a background glow is set *and* [containerColor] is left
+ * at its default, the container
  * becomes transparent (so the fill replaces the Material surface color) and
  * [elevation] drops to zero — a hard shadow under a translucent, self-lit surface
  * reads as a rendering glitch rather than depth. [contentColor] keeps tracking
@@ -46,7 +47,8 @@ import androidx.compose.ui.unit.dp
  *
  * (한국어) Material 3 FAB을 감싸는 얇은 래퍼입니다. elevation/ripple/테마/접근성은
  * Material 것을 그대로 쓰고, 같은 InteractionSource를 공유해 누르는 동안
- * glowStyle.pressed가 빛납니다. 배경 글로우가 지정되고 *동시에* containerColor가
+ * glowStyle.pressed가 빛납니다. backgroundGlowStyle은 둘레 색을 표면 안쪽의 하나의
+ * 혼합 중심 색으로 모으고 바깥으로도 번지게 합니다. 배경 글로우가 지정되고 *동시에* containerColor가
  * 기본값 그대로일 때만 컨테이너가 투명해지고(채움이 표면색을 대체) elevation이 0이
  * 됩니다 — 스스로 빛나는 반투명 표면 아래의 그림자는 입체감이 아니라 렌더링 오류처럼
  * 보이기 때문입니다. contentColor는 containerColor가 실제로 무엇으로 정해지든 그것을
@@ -81,7 +83,9 @@ import androidx.compose.ui.unit.dp
  * @param interactionSource Pass your own to observe/share interactions; `null` creates
  *   an internal one. (한국어) 직접 관찰하려면 전달, null이면 내부 생성.
  * @param backgroundGlowStyle Per-interaction-state surface glow; `null` (default)
- *   draws no fill. (한국어) 상태별 배경(표면) 글로우. null(기본)이면 채움 없음.
+ *   draws no fill. Its resolved shape should be single-contour and convex.
+ *   (한국어) 상태별 배경(표면) 글로우. null(기본)이면 채움이 없으며, 적용할 shape는 단일
+ *   외곽선의 볼록한 형태여야 합니다.
  * @param content Icon or any composable content. (한국어) 아이콘 등 임의 콘텐츠.
  */
 @Composable

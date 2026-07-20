@@ -16,7 +16,7 @@
   <img src="docs/images/hero.svg" alt="AiGlow — rotating AI-style gradient glow for Jetpack Compose" width="840"/>
 </p>
 
-A pure Jetpack Compose library that wraps your UI in a rotating, AI-style gradient glow — a soft blurred halo behind the content plus a crisp sweep-gradient ring around its edge.
+A pure Jetpack Compose library that wraps your UI in a rotating, AI-style gradient glow — a soft blurred halo behind the content plus a crisp perimeter-gradient ring around its edge.
 
 - **Zero global state** — every glowing component animates independently by construction.
 - **Zero recomposition while animating** — the rotation is read only in the draw phase.
@@ -31,7 +31,7 @@ A pure Jetpack Compose library that wraps your UI in a rotating, AI-style gradie
 | `AiGlowFloatingActionButton` | A Material 3 FAB wrapped in glow that brightens while pressed. |
 | `AiGlowBox` | A general-purpose container that puts a glow around *any* content, optionally clickable (ripple included). |
 | `Modifier.aiGlow(...)` | The raw edge-ring modifier behind all of the above — attach a border glow to any composable yourself. |
-| `Modifier.aiGlowBackground(...)` | The surface counterpart: fills the component itself with a rotating gradient that blooms outward. |
+| `Modifier.aiGlowBackground(...)` | The surface counterpart: carries the flowing perimeter colors inward, converges to one mixed palette color at the center, and blooms outward. |
 
 Every component takes two independent style parameters — `glowStyle` (edge ring) and `backgroundGlowStyle` (surface fill) — each with its own colors, opacity and rotation speed. Use either alone or both together.
 
@@ -79,11 +79,11 @@ repositories {
 
 // your module's build.gradle.kts
 dependencies {
-    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.2.1'
+    implementation 'com.github.Sangyoon98.AiGlowSearchBar:aiglow:v1.2.2'
 }
 ```
 
-> Note the coordinate format: since this repo has multiple Gradle modules (`:app`, `:aiglow`), JitPack requires `com.github.<user>.<repo>:<module>:<tag>` (dots joining user/repo) rather than the single-module `com.github.<user>:<repo>:<tag>` form. Replace `v1.2.1` with the desired release tag.
+> Note the coordinate format: since this repo has multiple Gradle modules (`:app`, `:aiglow`), JitPack requires `com.github.<user>.<repo>:<module>:<tag>` (dots joining user/repo) rather than the single-module `com.github.<user>:<repo>:<tag>` form. Replace `v1.2.2` with the desired release tag.
 
 > **Release flow:** see [PUBLISHING.md](PUBLISHING.md).
 
@@ -147,11 +147,11 @@ val config = GlowConfig(
 
 | Parameter | Type | Default | Meaning |
 |---|---|---|---|
-| `colors` | `List<Color>` | `AiGlowDefaults.GeminiColors` | Sweep gradient colors of the ring |
+| `colors` | `List<Color>` | `AiGlowDefaults.GeminiColors` | Perimeter-gradient palette |
 | `strokeWidth` | `Dp` | `2.dp` | Ring thickness |
 | `blurRadius` | `Dp` | `16.dp` | Halo spread; `0.dp` disables the halo |
 | `rotationDuration` | `Int` (ms) | `4000` | Time per full rotation |
-| `shape` | `Shape` | `RoundedCornerShape(28.dp)` | Outline of glow **and** host component — any radius, any custom `Shape` |
+| `shape` | `Shape` | `RoundedCornerShape(28.dp)` | Outline of glow **and** host component. Edge glow accepts custom shapes; the background fan targets single-contour convex shapes |
 | `haloColors` | `List<Color>?` | `null` (= `colors`) | Separate halo/shadow palette |
 | `haloStrokeWidth` | `Dp?` | `null` (= `strokeWidth * 2`) | Halo ring thickness |
 | `alpha` | `Float` | `1f` | Overall glow opacity |
@@ -198,7 +198,7 @@ Alpha differences between states animate smoothly; structural changes (colors, t
 
 ## Background glow (surface fill)
 
-Besides the edge ring, the component's *surface itself* can glow: `backgroundGlowStyle` fills the shape with a rotating sweep gradient and, when `blurRadius > 0`, blooms outward past the edge. It is fully independent from the ring — own palette, opacity, rotation speed, easing — and both can run at once:
+Besides the edge ring, the component's *surface itself* can glow. `backgroundGlowStyle` moves colors along the outline, extends them inward, and blends every edge color toward one phase-invariant palette mixture at the center. This removes the center-point seam of a sweep gradient. When `blurRadius > 0`, the `haloColors` palette (or `colors` when unset) blooms outward with the same perimeter phase. It remains fully independent from the ring — own palette, opacity, rotation speed and easing — and both can run at once:
 
 ```kotlin
 AiGlowSearchBar(
@@ -218,15 +218,15 @@ AiGlowSearchBar(
 
 Or glow any composable's surface with the raw modifier: `Modifier.aiGlowBackground(config)` — chain after `aiGlow` to combine (`Modifier.aiGlow(ring).aiGlowBackground(fill)`).
 
-`GlowConfig` field semantics in fill mode: `colors` = surface gradient, `alpha` = surface opacity, `blurRadius` = bloom distance, `haloColors` = bloom palette override; `strokeWidth`/`haloStrokeWidth`/`haloDirection` are unused (the fill's bloom is always outward). The fill draws *behind* the content, so hosts need transparent containers — the bundled components switch to transparent defaults automatically when `backgroundGlowStyle` is set (and the FAB also drops its elevation shadow).
+`GlowConfig` field semantics in fill mode: `colors` = perimeter-origin surface palette blended to one mixed center color, `alpha` = surface opacity, `blurRadius` = bloom distance, `haloColors` = bloom palette override; `strokeWidth`/`haloStrokeWidth`/`haloDirection` are unused (the fill's bloom is always outward). The triangle-fan fill is designed for single-contour convex shapes such as rounded rectangles, capsules and circles. The fill draws *behind* the content, so hosts need transparent containers — the bundled components switch to transparent defaults automatically when `backgroundGlowStyle` is set (and the FAB also drops its elevation shadow).
 
 ## How it works (and why it's fast)
 
 - **`GlowConfig` is an `@Immutable` data class** — a stability contract that lets Compose skip recomposition when an equal config is passed ([Compose stability guide](https://developer.android.com/develop/ui/compose/performance/stability)).
 - **Rotation state lives in composition, per call site** (`rememberInfiniteTransition`), so multiple glowing components can never interfere — there is no global or `companion object` state anywhere.
 - **The angle is read only inside the draw phase**, so animating invalidates *drawing only*: no composition, no layout, at 60–120fps ([Compose phases](https://developer.android.com/develop/ui/compose/phases), [defer reads](https://developer.android.com/develop/ui/compose/performance/bestpractices)).
-- **Expensive objects (outline path, shaders, paint) are cached with `drawWithCache`** and rebuilt only when size or config change ([graphics modifiers](https://developer.android.com/develop/ui/compose/graphics/draw/modifiers)).
-- **The gradient rotates via the shader's local matrix**, not the canvas — so the shape never tilts, only the colors flow.
+- **Expensive objects (outline path, meshes, paint) are cached with `drawWithCache`** and rebuilt only when size or config change ([graphics modifiers](https://developer.android.com/develop/ui/compose/graphics/draw/modifiers)).
+- **Gradient phase advances along normalized perimeter distance** while the outline and canvas stay fixed. The background interpolates those edge colors toward one mixed center color.
 - **The halo uses `BlurMaskFilter`, not `Modifier.blur()`** — `Modifier.blur()` would blur your content too and is ignored below API 31. The mask filter blurs only the glow stroke and is hardware-accelerated from API 28; on API 26–27 a layered-stroke approximation is drawn instead, so `blurRadius` works everywhere.
 
 ## Demo app — interactive playground
